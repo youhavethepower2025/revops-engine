@@ -1,0 +1,34 @@
+# RAILWAY DEPLOYMENT CONFIGURATION
+# The Manifest of Númenor - Game Theory Optimal Deployment
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "deployment/railway.dockerfile"
+
+[deploy]
+startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"
+restartPolicyType = "always"
+restartPolicyMaxRetries = 3
+
+# Environment variables
+[variables]
+ENVIRONMENT = "production"
+JWT_SECRET = "${{JWT_SECRET}}" 
+DATABASE_URL = "${{DATABASE_URL}}"
+CORS_ORIGINS = "https://your-domain.com,https://agent.forge"
+
+# Health check configuration
+[healthcheck]
+path = "/health"
+timeout = 30
+interval = 30
+
+# Resource limits (The boundaries of power)
+[resources]
+# Railway will auto-scale based on usage
+# memory = 1024
+# vcpu = 1000
+
+# Cron jobs (The scheduled servants)
+# [cron]
+# "0 0 * * *" = "python scripts/daily_cleanup.py"

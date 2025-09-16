@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # Your existing MCP brain
+  mcp-brain:
+    build: ./mcp-brain
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+    networks:
+      - brain-network
+
+  # ClearVC Amber Brain
+  clearvc-brain:
+    build: ./ClearVC/amber-brain
+    ports:
+      - "8001:8000"  # Run on 8001 locally, maps to 8000 in container
+    environment:
+      - DATABASE_URL=postgresql://clearvc:clearvc_secure_password@clearvc-postgres:5432/clearvc_brain
+      - REDIS_URL=redis://clearvc-redis:6379
+      - RETELL_API_KEY=${RETELL_API_KEY}
+      - GHL_API_KEY=${CLEARVC_GHL_API_KEY}
+      - GHL_LOCATION_ID=${CLEARVC_GHL_LOCATION_ID}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - clearvc-postgres
+      - clearvc-redis
+    networks:
+      - brain-network
+
+  # ClearVC's dedicated PostgreSQL
+  clearvc-postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: clearvc_brain
+      POSTGRES_USER: clearvc
+      POSTGRES_PASSWORD: clearvc_secure_password
+    volumes:
+      - clearvc_postgres_data:/var/lib/postgresql/data
+    networks:
+      - brain-network
+
+  # ClearVC's dedicated Redis
+  clearvc-redis:
+    image: redis:7-alpine
+    networks:
+      - brain-network
+
+  # Webhook router (routes based on agent_id)
+  webhook-router:
+    build:
+      context: .
+      dockerfile: Dockerfile.router
+    ports:
+      - "8090:8090"  # Router runs on 8090
+    environment:
+      - CLEARVC_BRAIN_URL=http://clearvc-brain:8000
+      - MCP_BRAIN_URL=http://mcp-brain:8080
+    depends_on:
+      - mcp-brain
+      - clearvc-brain
+    networks:
+      - brain-network
+
+networks:
+  brain-network:
+    driver: bridge
+
+volumes:
+  clearvc_postgres_data:

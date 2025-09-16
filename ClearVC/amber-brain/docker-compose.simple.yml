@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  clearvc-brain:
+    build: .
+    container_name: clearvc-amber-brain
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - GHL_API_KEY=pit-fdf8bee7-9c21-4748-b265-e732781c8b3f
+      - GHL_LOCATION_ID=PMgbQ375TEGOyGXsKz7e
+      - ENVIRONMENT=production
+    volumes:
+      - ./amber_memory.db:/app/amber_memory.db
+      - ./intelligent_server.py:/app/intelligent_server.py
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

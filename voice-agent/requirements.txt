@@ -1,0 +1,6 @@
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+httpx==0.25.1
+websockets==11.0.3
+twilio==8.9.1
+python-multipart==0.0.6

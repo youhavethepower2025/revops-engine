@@ -1,0 +1,40 @@
+Project Proposal: Amber AI Partnership for ClearVC
+Date: August 20, 2025
+Prepared For: ClearVC 
+Subject: A Strategic Partnership Proposal for AI-Powered Communication and Revenue Growth.
+
+1. The Opportunity: Capturing Every Client Interaction
+ClearVC is committed to providing exceptional service. However, a critical gap exists with incoming client communications that are not answered immediately or that arrive after-hours. 
+Every unanswered phone call and unhandled web chat represents a potential missed sales opportunity and a risk to the brand's reputation. This proposal outlines a plan to close that gap and simultaneously create a new revenue stream.
+2. Our Solution: Amber - Your 24/7 Communications Agent
+Amber is an AI-powered agent designed to serve as a seamless and intelligent extension of the ClearVC team. It ensures every inbound communication is handled promptly and professionally. For this initial implementation, Amber will master two key scenarios:
+After-Hours Engagement: Professionally handle all calls and web chats that arrive outside of business hours, capturing client needs for morning follow-up.
+Instantaneous Overflow: Automatically engage any call or chat that is not answered by the live team, guaranteeing a 100% response rate.
+3. Phase 1: Proof of Concept & Foundation
+This initial phase deploys a foundational version of Amber to solve this core business challenge.
+Total Investment for Phase 1: $5,000 USD*
+Deliverables Included in Phase 1:
+UK-Native Voice & Locale: A professional UK voice and locale for a natural, low-latency client experience.
+Knowledge Intake Engine: A structured process to build Amber's knowledge base, focused on ClearVC’s services.
+Live Deployment (Testing Pool): Deployment of the voice and text-chat AI to handle all after-hours and overflow communications.
+Backend Analytics Portal (V1): Secure access to a dashboard to review all conversation transcripts and identify client trends.
+Adjustment & Tuning Mechanism: A process for refining Amber’s responses based on real-world performance.
+12-Month Partnership License: Includes software licensing, hosting, and support for one year. Crucially, this license grants ClearVC full access to all platform upgrades, new features, and add-ons developed during the 12-month term at no additional cost.
+*Additional API usage fees will be reviewed in month 3 to identify optimisations and/or any limiters needed to maintain cost to Advisory 9 of over $150 USD/month.
+
+4. A Strategic Partnership: Beyond Service to Revenue
+This is more than an operational investment; it is an invitation to a strategic partnership with a significant financial upside.
+Future-Proof Investment: Your initial investment is protected and grows in value. As the Amber platform evolves with new features (live agent handoff, CRM integration, etc.), ClearVC will receive these upgrades automatically throughout the one-year term at no additional cost unless required to meet technical compliance needs beyond the scope of the software.
+New Revenue Stream: As a Phase 1 partner, ClearVC is granted full reseller rights. This means you can offer the Amber solution to your own network and clients.
+ClearVC will earn a recurring 40% commission on the license fees for every new client you onboard.
+This transforms an operational tool into a high-margin, scalable profit center for your business.
+5. The Path Forward: A Shared Roadmap
+The Amber platform is undergoing continuous, robust development. Your partnership gives you a front-row seat and full access to these enhancements as they are released:
+Near-Term (Months 2-4): Live agent handoff, direct meeting booking, and CRM integration.
+Mid-Term (Months 5-7): Connection to larger datasets, automated note-taking, and advanced analytics.
+Long-Term (Months 8-12): Continued optimization and exploration of new capabilities.
+6. Next Steps
+We are ready to begin this partnership immediately. To proceed, we require:
+Approval and payment of the $5,000 USD budget for the Phase 1 Proof of Concept and Partnership License.
+Designation of a primary point of contact for the knowledge intake process.
+

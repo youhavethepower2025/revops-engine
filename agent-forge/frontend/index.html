@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent.Forge - The Command Center of Valinor</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* ===============================
+           THE STYLES OF NÚMENOR 
+           =============================== */
+        
+        :root {
+            /* The Colors of the Undying Lands */
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #64748b;
+            --success: #059669;
+            --warning: #d97706;
+            --danger: #dc2626;
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --muted: #64748b;
+            
+            /* The Measures of Elrond */
+            --border-radius: 8px;
+            --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --box-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--dark);
+        }
+        
+        /* ===============================
+           THE NAVIGATION OF ELROND
+           =============================== */
+        
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--box-shadow);
+        }
+        
+        .navbar-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .logo {
+            font-size: 1.75rem;
+            font-weight: bold;
+            color: var(--primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .logo i {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+        
+        .nav-link {
+            color: var(--secondary);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .nav-link:hover, .nav-link.active {
+            color: var(--primary);
+            background: rgba(37, 99, 235, 0.1);
+        }
+        
+        .user-menu {
+            position: relative;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .user-avatar:hover {
+            transform: scale(1.05);
+        }
+        
+        /* ===============================
+           THE MAIN REALM
+           =============================== */
+        
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        /* Welcome Section - The Gates of Minas Tirith */
+        .welcome-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--box-shadow-lg);
+            text-align: center;
+        }
+        
+        .welcome-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--dark);
+            margin-bottom: 1rem;
+        }
+        
+        .welcome-subtitle {
+            font-size: 1.25rem;
+            color: var(--muted);
+            margin-bottom: 2rem;
+        }
+        
+        /* Stats Cards - The Beacons of Gondor */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--box-shadow);
+            transition: var(--transition);
+            text-align: center;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--box-shadow-lg);
+        }
+        
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 1rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        /* Action Section - The Council Chamber */
+        .action-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--box-shadow-lg);
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--dark);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .action-card {
+            border: 1px solid rgba(37, 99, 235, 0.2);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+        
+        .action-card:hover {
+            border-color: var(--primary);
+            background: rgba(37, 99, 235, 0.05);
+            transform: translateY(-1px);
+        }
+        
+        .action-card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--border-radius);
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+        
+        .action-card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+        }
+        
+        .action-card-description {
+            color: var(--muted);
+            line-height: 1.5;
+        }
+        
+        /* Buttons - The Weapons of Light */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--border-radius);
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.875rem;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--box-shadow);
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: var(--secondary);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--light);
+            border-color: var(--secondary);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #047857);
+            color: white;
+        }
+        
+        .btn-lg {
+            padding: 1rem 2rem;
+            font-size: 1rem;
+        }
+        
+        /* Recent Activity - The Chronicles */
+        .activity-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: var(--box-shadow-lg);
+        }
+        
+        .activity-item {
+            display: flex;
+            align-items: start;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(100, 116, 139, 0.1);
+        }
+        
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+        
+        .activity-icon {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--success), #047857);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+        
+        .activity-content {
+            flex: 1;
+        }
+        
+        .activity-title {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 0.25rem;
+        }
+        
+        .activity-description {
+            font-size: 0.875rem;
+            color: var(--muted);
+            margin-bottom: 0.25rem;
+        }
+        
+        .activity-time {
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+        
+        /* Modal System - The Palantír Windows */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80%;
+            overflow-y: auto;
+            box-shadow: var(--box-shadow-lg);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--dark);
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--muted);
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+        }
+        
+        .modal-close:hover {
+            background: var(--light);
+        }
+        
+        /* Forms - The Scrolls of Power */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-label {
+            display: block;
+            font-weight: 500;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            border-radius: var(--border-radius);
+            font-size: 0.875rem;
+            transition: var(--transition);
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        /* Loading States - The Light of Eärendil */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Responsive Design - The Adaptability of the Elves */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 1rem;
+            }
+            
+            .main-container {
+                padding: 1rem;
+            }
+            
+            .welcome-title {
+                font-size: 2rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav-links {
+                display: none; /* Mobile menu would go here */
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- The Navigation of Elrond -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="#" class="logo">
+                <i class="fas fa-magic"></i>
+                Agent.Forge
+            </a>
+            
+            <div class="nav-links">
+                <a href="#" class="nav-link active">
+                    <i class="fas fa-home"></i>
+                    Dashboard
+                </a>
+                <a href="#" class="nav-link" onclick="showClients()">
+                    <i class="fas fa-users"></i>
+                    Clients
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="fas fa-robot"></i>
+                    Agents
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="fas fa-chart-line"></i>
+                    Analytics
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="fas fa-cog"></i>
+                    Settings
+                </a>
+            </div>
+            
+            <div class="user-menu">
+                <div class="user-avatar" onclick="toggleUserMenu()">
+                    A
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- The Main Realm -->
+    <div class="main-container">
+        <!-- Welcome Section - The Gates of Minas Tirith -->
+        <div class="welcome-section">
+            <h1 class="welcome-title">Welcome to Agent.Forge</h1>
+            <p class="welcome-subtitle">Your command center for deploying intelligent agents across the digital realm</p>
+            <button class="btn btn-primary btn-lg" onclick="openCreateClientModal()">
+                <i class="fas fa-plus"></i>
+                Create Your First Agent
+            </button>
+        </div>
+
+        <!-- Stats Cards - The Beacons of Gondor -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-value" id="clientCount">0</div>
+                <div class="stat-label">Active Clients</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="stat-value" id="agentCount">0</div>
+                <div class="stat-label">Deployed Agents</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <div class="stat-value" id="conversationCount">0</div>
+                <div class="stat-label">Conversations</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="stat-value">↗ 23%</div>
+                <div class="stat-label">Growth This Month</div>
+            </div>
+        </div>
+
+        <!-- Quick Actions - The Council Chamber -->
+        <div class="action-section">
+            <h2 class="section-title">
+                <i class="fas fa-bolt"></i>
+                Quick Actions
+            </h2>
+            
+            <div class="action-grid">
+                <div class="action-card" onclick="openCreateClientModal()">
+                    <div class="action-card-icon">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <h3 class="action-card-title">Add New Client</h3>
+                    <p class="action-card-description">Create a new client realm and deploy an intelligent agent to their website.</p>
+                </div>
+                
+                <div class="action-card" onclick="showAnalytics()">
+                    <div class="action-card-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <h3 class="action-card-title">View Analytics</h3>
+                    <p class="action-card-description">Monitor performance, conversations, and insights across all your deployed agents.</p>
+                </div>
+                
+                <div class="action-card" onclick="manageKnowledge()">
+                    <div class="action-card-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3 class="action-card-title">Manage Knowledge</h3>
+                    <p class="action-card-description">Update agent knowledge bases with intent-based information, not RAG chunks.</p>
+                </div>
+                
+                <div class="action-card" onclick="showIntegrations()">
+                    <div class="action-card-icon">
+                        <i class="fas fa-plug"></i>
+                    </div>
+                    <h3 class="action-card-title">Integrations</h3>
+                    <p class="action-card-description">Connect with Slack, Zapier, CRM systems, and other tools your team uses.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity - The Chronicles -->
+        <div class="activity-section">
+            <h2 class="section-title">
+                <i class="fas fa-history"></i>
+                Recent Activity
+            </h2>
+            
+            <div class="activity-item">
+                <div class="activity-icon">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="activity-content">
+                    <div class="activity-title">Agent deployed for Acme Corp</div>
+                    <div class="activity-description">Successfully configured customer service agent with knowledge base</div>
+                    <div class="activity-time">2 hours ago</div>
+                </div>
+            </div>
+            
+            <div class="activity-item">
+                <div class="activity-icon">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <div class="activity-content">
+                    <div class="activity-title">50 new conversations handled</div>
+                    <div class="activity-description">Agents across all clients processed customer inquiries with 95% satisfaction</div>
+                    <div class="activity-time">4 hours ago</div>
+                </div>
+            </div>
+            
+            <div class="activity-item">
+                <div class="activity-icon">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <div class="activity-content">
+                    <div class="activity-title">Knowledge base updated</div>
+                    <div class="activity-description">Added new product information and pricing intents for TechStartup Inc</div>
+                    <div class="activity-time">1 day ago</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals - The Palantír Windows -->
+    
+    <!-- Create Client Modal -->
+    <div id="createClientModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Create New Client</h3>
+                <button class="modal-close" onclick="closeModal('createClientModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="createClientForm" onsubmit="createClient(event)">
+                <div class="form-group">
+                    <label class="form-label" for="clientName">Client Name *</label>
+                    <input type="text" id="clientName" class="form-input" required placeholder="Acme Corporation">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="clientDomain">Website Domain</label>
+                    <input type="url" id="clientDomain" class="form-input" placeholder="https://acme.com">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="brandColor">Brand Color</label>
+                    <input type="color" id="brandColor" class="form-input" value="#2563eb">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="welcomeMessage">Welcome Message</label>
+                    <textarea id="welcomeMessage" class="form-input form-textarea" placeholder="Hi! How can I help you today?">Hi! How can I help you today?</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        <i class="fas fa-magic"></i>
+                        Deploy Agent
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ===============================
+        // THE JAVASCRIPT OF MIDDLE-EARTH
+        // ===============================
+        
+        // Global state (The One Ring to rule them all)
+        let currentUser = null;
+        let apiBase = 'http://localhost:8000'; // Update for production
+        
+        // Initialize the realm
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+        
+        async function initializeApp() {
+            // Check authentication
+            const token = localStorage.getItem('agentforge_token');
+            if (!token) {
+                showLogin();
+                return;
+            }
+            
+            // Load dashboard data
+            await loadDashboardData();
+        }
+        
+        async function loadDashboardData() {
+            try {
+                // Get team overview
+                const response = await apiRequest('/teams/current');
+                const teamData = response;
+                
+                // Update stats
+                document.getElementById('clientCount').textContent = teamData.client_count || 0;
+                
+                // Get clients for more detailed stats
+                const clientsResponse = await apiRequest('/clients');
+                const clients = clientsResponse;
+                
+                let totalAgents = 0;
+                let totalConversations = 0;
+                
+                clients.forEach(client => {
+                    totalAgents += client.agent_count || 0;
+                    totalConversations += client.conversation_count || 0;
+                });
+                
+                document.getElementById('agentCount').textContent = totalAgents;
+                document.getElementById('conversationCount').textContent = totalConversations;
+                
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+        
+        // Modal management
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+        
+        function openCreateClientModal() {
+            openModal('createClientModal');
+        }
+        
+        // API helper function
+        async function apiRequest(endpoint, options = {}) {
+            const token = localStorage.getItem('agentforge_token');
+            
+            const config = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { 'Authorization': `Bearer ${token}` })
+                },
+                ...options
+            };
+            
+            const response = await fetch(apiBase + endpoint, config);
+            
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.statusText}`);
+            }
+            
+            return await response.json();
+        }
+        
+        // Create client functionality
+        async function createClient(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const clientData = {
+                name: formData.get('clientName') || document.getElementById('clientName').value,
+                domain: document.getElementById('clientDomain').value,
+                brand_color: document.getElementById('brandColor').value,
+                welcome_message: document.getElementById('welcomeMessage').value
+            };
+            
+            try {
+                // Show loading state
+                const submitBtn = event.target.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<span class="spinner"></span> Creating...';
+                submitBtn.disabled = true;
+                
+                // Create client via API
+                const response = await apiRequest('/clients', {
+                    method: 'POST',
+                    body: JSON.stringify(clientData)
+                });
+                
+                // Success!
+                closeModal('createClientModal');
+                showSuccess(`Agent deployed for ${clientData.name}! Widget ID: ${response.widget_id}`);
+                
+                // Refresh dashboard
+                await loadDashboardData();
+                
+                // Reset form
+                event.target.reset();
+                
+            } catch (error) {
+                showError('Failed to create client: ' + error.message);
+            } finally {
+                // Reset button
+                const submitBtn = event.target.querySelector('button[type="submit"]');
+                submitBtn.innerHTML = '<i class="fas fa-magic"></i> Deploy Agent';
+                submitBtn.disabled = false;
+            }
+        }
+        
+        // Navigation functions
+        function showClients() {
+            // Navigate to clients view
+            console.log('Showing clients...');
+        }
+        
+        function showAnalytics() {
+            // Navigate to analytics view
+            console.log('Showing analytics...');
+        }
+        
+        function manageKnowledge() {
+            // Navigate to knowledge management
+            console.log('Managing knowledge...');
+        }
+        
+        function showIntegrations() {
+            // Navigate to integrations
+            console.log('Showing integrations...');
+        }
+        
+        function showLogin() {
+            // For now, just redirect to login (would implement proper login form)
+            window.location.href = '/login';
+        }
+        
+        function toggleUserMenu() {
+            // Toggle user dropdown menu
+            console.log('Toggle user menu...');
+        }
+        
+        // Notification functions
+        function showSuccess(message) {
+            // Create success notification
+            showNotification(message, 'success');
+        }
+        
+        function showError(message) {
+            // Create error notification  
+            showNotification(message, 'error');
+        }
+        
+        function showNotification(message, type) {
+            // Create and show notification toast
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                ${message}
+            `;
+            
+            // Style the notification
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? 'var(--success)' : 'var(--danger)'};
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: var(--border-radius);
+                box-shadow: var(--box-shadow-lg);
+                z-index: 1001;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                max-width: 400px;
+                animation: slideInRight 0.3s ease-out;
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideOutRight 0.3s ease-out';
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
+        }
+        
+        // Add CSS for notifications
+        const notificationStyles = document.createElement('style');
+        notificationStyles.textContent = `
+            @keyframes slideInRight {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            
+            @keyframes slideOutRight {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(notificationStyles);
+    </script>
+</body>
+</html>
