@@ -1,6 +1,7 @@
 
 const express = require('express');
 const axios = require('axios');
+const crypto = require('crypto');
 
 const app = express();
 app.use(express.json());
@@ -8,6 +9,8 @@ app.use(express.json());
 const SPECTRUM_URL = 'http://localhost:8080/sse';
 const SPECTRUM_HEALTH_URL = 'http://localhost:8080/health';
 const PORT = 8002;
+const SERVICE_TOKEN = process.env.SERVICE_TOKEN || '';
+const RAILWAY_TOKEN = process.env.RAILWAY_TOKEN || '';
 
 // Log requests for clarity
 app.use((req, res, next) => {
@@ -36,6 +39,68 @@ app.get('/health', async (req, res) => {
       error: error.message
     });
   }
+});
+
+// Simple auth middleware for backend->gateway calls (optional for now)
+function requireServiceToken(req, res, next) {
+  const token = req.header('X-Service-Token') || '';
+  if (!SERVICE_TOKEN || token !== SERVICE_TOKEN) {
+    return res.status(401).json({ error: 'Invalid service token' });
+  }
+  next();
+}
+
+/**
+ * Deploy task endpoint - invoked by backend.
+ * Expects: { deployment_id, team_id, client_id, agent_id, target, callback_url }
+ * Simulates a deployment and reports status back to backend webhook.
+ */
+app.post('/deploy', requireServiceToken, async (req, res) => {
+  const { deployment_id, team_id, client_id, agent_id, target, callback_url } = req.body || {};
+  if (!deployment_id || !team_id || !client_id || !agent_id || !callback_url) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  res.json({ ok: true, accepted: true });
+
+  // Fire-and-forget simulated deployment
+  (async () => {
+    const headers = { 'X-Service-Token': SERVICE_TOKEN };
+    try {
+      await axios.post(callback_url, { status: 'running', logs_append: '[gateway] starting deploy...\n' }, { headers });
+
+      // Simulate steps
+      await new Promise(r => setTimeout(r, 500));
+      await axios.post(callback_url, { status: 'running', logs_append: '[gateway] provisioning on target...\n' }, { headers });
+
+      let endpointUrl = `https://example-deploy/${client_id}/${agent_id}`;
+
+      // If RAILWAY_TOKEN exists, demonstrate intended call structure (stubbed)
+      if (RAILWAY_TOKEN) {
+        try {
+          // Example placeholder for Railway API integration
+          // const prjResp = await axios.get('https://backboard.railway.app/graphql', { ... })
+          await new Promise(r => setTimeout(r, 400));
+          await axios.post(callback_url, { status: 'running', logs_append: '[gateway] Railway API token detected; would create/update service here.\n' }, { headers });
+          endpointUrl = endpointUrl.replace('example-deploy', 'railway-app');
+        } catch (e) {
+          await axios.post(callback_url, { status: 'running', logs_append: `[gateway] Railway API error (non-fatal for MVP): ${e.message}\n` }, { headers });
+        }
+      }
+
+      await axios.post(callback_url, {
+        status: 'success',
+        logs_append: '[gateway] deployment complete.\n',
+        result: { endpoint: endpointUrl, target: target || 'railway' }
+      }, { headers });
+    } catch (err) {
+      try {
+        await axios.post(callback_url, { status: 'failed', logs_append: `[gateway] error: ${err.message}\n` }, { headers });
+      } catch (e2) {
+        // swallow
+      }
+    }
+  })();
 });
 
 /**

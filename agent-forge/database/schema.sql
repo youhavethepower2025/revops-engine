@@ -443,6 +443,43 @@ WHERE t.active = true
 GROUP BY t.id, t.name, t.subscription_tier;
 
 -- ===============================
+-- DEPLOYMENTS (The Smiths' Work)
+-- ===============================
+
+CREATE TABLE deployments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    agent_id UUID NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','running','success','failed')),
+    target VARCHAR(50) DEFAULT 'railway' CHECK (target IN ('railway','retell','custom')),
+    task_type VARCHAR(50) DEFAULT 'deploy_agent',
+    logs TEXT DEFAULT '',
+    result JSONB DEFAULT '{}'::jsonb,
+    created_by UUID REFERENCES team_members(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_deployments_team ON deployments(team_id);
+CREATE INDEX idx_deployments_client ON deployments(client_id);
+CREATE INDEX idx_deployments_agent ON deployments(agent_id);
+CREATE INDEX idx_deployments_status ON deployments(status);
+
+CREATE TRIGGER update_deployments_updated_at BEFORE UPDATE ON deployments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TABLE deployment_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    deployment_id UUID NOT NULL REFERENCES deployments(id) ON DELETE CASCADE,
+    level VARCHAR(10) DEFAULT 'info' CHECK (level IN ('debug','info','warn','error')),
+    message TEXT NOT NULL,
+    context JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_deployment_logs_deployment ON deployment_logs(deployment_id);
+
+-- ===============================
 -- SAMPLE DATA (The First Light)
 -- ===============================
 

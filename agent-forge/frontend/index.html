@@ -700,22 +700,22 @@
             <form id="createClientForm" onsubmit="createClient(event)">
                 <div class="form-group">
                     <label class="form-label" for="clientName">Client Name *</label>
-                    <input type="text" id="clientName" class="form-input" required placeholder="Acme Corporation">
+                    <input type="text" id="clientName" name="clientName" class="form-input" required placeholder="Acme Corporation">
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label" for="clientDomain">Website Domain</label>
-                    <input type="url" id="clientDomain" class="form-input" placeholder="https://acme.com">
+                    <input type="url" id="clientDomain" name="clientDomain" class="form-input" placeholder="https://acme.com">
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label" for="brandColor">Brand Color</label>
-                    <input type="color" id="brandColor" class="form-input" value="#2563eb">
+                    <input type="color" id="brandColor" name="brandColor" class="form-input" value="#2563eb">
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label" for="welcomeMessage">Welcome Message</label>
-                    <textarea id="welcomeMessage" class="form-input form-textarea" placeholder="Hi! How can I help you today?">Hi! How can I help you today?</textarea>
+                    <textarea id="welcomeMessage" name="welcomeMessage" class="form-input form-textarea" placeholder="Hi! How can I help you today?">Hi! How can I help you today?</textarea>
                 </div>
                 
                 <div class="form-group">
@@ -842,10 +842,26 @@
                     body: JSON.stringify(clientData)
                 });
                 
+                // Trigger deployment for the created default agent
+                if (response.agent_id) {
+                    try {
+                        const deployResp = await apiRequest(`/agents/${response.agent_id}/deploy`, {
+                            method: 'POST',
+                            body: JSON.stringify({ target: 'railway' })
+                        });
+                        showSuccess(`Deployment started for ${clientData.name}. Widget ID: ${response.widget_id}`);
+                        if (deployResp && deployResp.deployment_id) {
+                            pollDeployment(deployResp.deployment_id);
+                        }
+                    } catch (e) {
+                        showError('Client created but failed to start deployment: ' + e.message);
+                    }
+                } else {
+                    showSuccess(`Client created: ${clientData.name}. Widget ID: ${response.widget_id}`);
+                }
+
                 // Success!
                 closeModal('createClientModal');
-                showSuccess(`Agent deployed for ${clientData.name}! Widget ID: ${response.widget_id}`);
-                
                 // Refresh dashboard
                 await loadDashboardData();
                 
@@ -860,6 +876,32 @@
                 submitBtn.innerHTML = '<i class="fas fa-magic"></i> Deploy Agent';
                 submitBtn.disabled = false;
             }
+        }
+
+        async function pollDeployment(deploymentId) {
+            let attempts = 0;
+            const maxAttempts = 40; // ~40s
+            const intervalMs = 1000;
+            const toastId = `deploy-${deploymentId}`;
+            showNotification(`Deploying...`, 'success');
+            const timer = setInterval(async () => {
+                attempts++;
+                try {
+                    const dep = await apiRequest(`/deployments/${deploymentId}`);
+                    if (dep.status === 'success') {
+                        clearInterval(timer);
+                        showSuccess(`Deployment complete. Endpoint: ${dep.result?.endpoint || 'ready'}`);
+                    } else if (dep.status === 'failed') {
+                        clearInterval(timer);
+                        showError('Deployment failed. Check logs in backend.');
+                    }
+                } catch (e) {
+                    // ignore transient errors
+                }
+                if (attempts >= maxAttempts) {
+                    clearInterval(timer);
+                }
+            }, intervalMs);
         }
         
         // Navigation functions
