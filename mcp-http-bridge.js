@@ -90,17 +90,25 @@ rl.on('line', async (line) => {
       },
       body: JSON.stringify(request)
     });
-    
+
     const responseTime = Date.now() - startTime;
     log(`Response received in ${responseTime}ms - Status: ${response.status}`);
-    
-    if (!response.ok) {
+
+    if (!response.ok && response.status !== 202) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-    
+
+    // Handle 202 Accepted (notifications) - per MCP spec, no response to forward
+    if (response.status === 202) {
+      log(`Notification acknowledged (202 Accepted) for: ${request.method} - no response to forward`);
+      // Don't send anything to stdout for notifications
+      return;
+    }
+
+    // For all other successful responses, parse JSON and forward to Claude
     const result = await response.json();
     logResponse(result, request.method);
-    
+
     // Send response back to Claude via stdout
     process.stdout.write(JSON.stringify(result) + '\n');
     log(`Response sent back to Claude for: ${request.method}`);
