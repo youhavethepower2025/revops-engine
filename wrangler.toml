@@ -1,0 +1,86 @@
+name = "revops-mcp-engine"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+node_compat = true
+
+# Account details (update with your Cloudflare account)
+account_id = "YOUR_ACCOUNT_ID"
+workers_dev = true
+
+# D1 Database binding (SQLite at the edge)
+[[d1_databases]]
+binding = "DB"
+database_name = "revops-crm"
+database_id = "YOUR_D1_DATABASE_ID"
+
+# KV namespace for caching
+[[kv_namespaces]]
+binding = "CACHE"
+id = "YOUR_KV_NAMESPACE_ID"
+
+# Durable Objects - Multi-tenant MCP servers
+[[durable_objects.bindings]]
+name = "MCP_SERVER"
+class_name = "MCPServer"
+script_name = "revops-mcp-engine"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["MCPServer"]
+
+# Analytics Engine for usage tracking
+[[analytics_engine_datasets]]
+binding = "ANALYTICS"
+
+# R2 bucket for file storage (optional - for documents, exports)
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "revops-files"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "production"
+API_VERSION = "v1"
+MCP_PROTOCOL_VERSION = "2024-11-05"
+
+# Secrets (set via: wrangler secret put SECRET_NAME)
+# - JWT_SECRET: For API authentication
+# - OPENAI_API_KEY: For embeddings
+# - ANTHROPIC_API_KEY: For AI features
+
+[build]
+command = "npm run build"
+
+[build.upload]
+format = "service-worker"
+
+# Development configuration
+[env.development]
+name = "revops-mcp-engine-dev"
+workers_dev = true
+
+[[env.development.d1_databases]]
+binding = "DB"
+database_name = "revops-crm-dev"
+database_id = "YOUR_DEV_D1_DATABASE_ID"
+
+[[env.development.kv_namespaces]]
+binding = "CACHE"
+id = "YOUR_DEV_KV_NAMESPACE_ID"
+
+# Production configuration
+[env.production]
+name = "revops-mcp-engine"
+workers_dev = false
+routes = [
+  { pattern = "mcp.revops.ai/*", zone_name = "revops.ai" }
+]
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "revops-crm-prod"
+database_id = "YOUR_PROD_D1_DATABASE_ID"
+
+[[env.production.kv_namespaces]]
+binding = "CACHE"
+id = "YOUR_PROD_KV_NAMESPACE_ID"

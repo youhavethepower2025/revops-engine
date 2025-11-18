@@ -87,3 +87,10 @@ credentials.json
 
 # Docker
 .dockerignore
+
+# Cloudflare Workers
+.wrangler/
+.mf/
+.dev.vars
+worker/
+wrangler.toml.backup

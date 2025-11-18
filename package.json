@@ -1,0 +1,45 @@
+{
+  "name": "revops-mcp-engine",
+  "version": "1.0.0",
+  "description": "Cloud-native MCP CRM built on Cloudflare Durable Objects",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:dev": "wrangler deploy --env development",
+    "deploy:prod": "wrangler deploy --env production",
+    "tail": "wrangler tail",
+    "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js",
+    "db:migrate": "wrangler d1 execute revops-crm --file=./migrations/0001_initial_schema.sql",
+    "db:migrate:dev": "wrangler d1 execute revops-crm-dev --file=./migrations/0001_initial_schema.sql --env development",
+    "db:seed": "wrangler d1 execute revops-crm --file=./migrations/seed.sql",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "mcp",
+    "crm",
+    "cloudflare",
+    "durable-objects",
+    "ai",
+    "salesforce",
+    "edge-computing"
+  ],
+  "author": "RevOps Engine",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "@types/node": "^20.10.0",
+    "esbuild": "^0.19.8",
+    "typescript": "^5.3.3",
+    "vitest": "^1.0.4",
+    "wrangler": "^3.78.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "hono": "^3.11.7",
+    "itty-router": "^4.0.0",
+    "zod": "^3.22.4"
+  }
+}

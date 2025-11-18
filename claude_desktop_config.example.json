@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "revops-crm": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/revops-engine/mcp-client.js"
+      ],
+      "env": {
+        "REVOPS_API_KEY": "revops_live_your_api_key_here",
+        "REVOPS_ENDPOINT": "https://your-worker-url.workers.dev/mcp",
+        "DEBUG": "false"
+      }
+    }
+  }
+}
