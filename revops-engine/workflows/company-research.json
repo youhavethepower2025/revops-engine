@@ -1,0 +1,59 @@
+{
+  "name": "company-research-pipeline",
+  "description": "Research companies: Search → Scrape → Enrich → Research",
+  "steps": [
+    {
+      "name": "search_companies",
+      "type": "http",
+      "config": {
+        "url": "https://revops-search.aijesusbro-brain.workers.dev",
+        "method": "POST",
+        "body": {
+          "criteria": "{{criteria}}"
+        }
+      }
+    },
+    {
+      "name": "scrape_contacts",
+      "type": "http",
+      "config": {
+        "url": "https://revops-scraper.aijesusbro-brain.workers.dev",
+        "method": "POST",
+        "body": {
+          "company_domain": "{{search_companies.company.domain}}",
+          "company_name": "{{search_companies.company.name}}"
+        },
+        "for_each": "search_companies.companies"
+      }
+    },
+    {
+      "name": "enrich_contacts",
+      "type": "http",
+      "config": {
+        "url": "https://revops-enrichment.aijesusbro-brain.workers.dev",
+        "method": "POST",
+        "body": {
+          "contact": "{{scrape_contacts.contact}}"
+        },
+        "for_each": "scrape_contacts.contacts"
+      }
+    },
+    {
+      "name": "research_prospects",
+      "type": "http",
+      "config": {
+        "url": "https://revops-researcher.aijesusbro-brain.workers.dev",
+        "method": "POST",
+        "body": {
+          "prospect": "{{enrich_contacts.contact}}"
+        },
+        "for_each": "enrich_contacts.contacts"
+      }
+    }
+  ],
+  "trigger": {
+    "type": "manual"
+  }
+}
+
+

@@ -1,0 +1,31 @@
+{
+  "name": "example-workflow",
+  "description": "Example workflow definition",
+  "steps": [
+    {
+      "name": "step1",
+      "type": "http",
+      "config": {
+        "url": "https://worker.example.com",
+        "method": "POST",
+        "body": {
+          "data": "{{input}}"
+        }
+      }
+    },
+    {
+      "name": "step2",
+      "type": "worker",
+      "config": {
+        "worker": "worker-name",
+        "action": "process",
+        "data": "{{step1.result}}"
+      }
+    }
+  ],
+  "trigger": {
+    "type": "manual"
+  }
+}
+
+

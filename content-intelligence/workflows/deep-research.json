@@ -1,0 +1,74 @@
+{
+  "name": "deep-research",
+  "description": "Search → Fetch → Analyze → Graph → Synthesize",
+  "steps": [
+    {
+      "name": "search_sources",
+      "type": "http",
+      "config": {
+        "url": "https://content-search.aijesusbro-brain.workers.dev",
+        "method": "POST",
+        "body": {
+          "topic": "{{topic}}",
+          "max_results": "{{max_sources}}"
+        }
+      }
+    },
+    {
+      "name": "fetch_content",
+      "type": "http",
+      "config": {
+        "url": "https://content-fetcher.aijesusbro-brain.workers.dev",
+        "method": "POST",
+        "body": {
+          "source": "{{search_sources.source}}"
+        },
+        "for_each": "search_sources.sources"
+      }
+    },
+    {
+      "name": "analyze_insights",
+      "type": "http",
+      "config": {
+        "url": "https://content-analyzer.aijesusbro-brain.workers.dev",
+        "method": "POST",
+        "body": {
+          "source_content": "{{fetch_content.extracted}}",
+          "topic": "{{topic}}"
+        },
+        "for_each": "fetch_content.results"
+      }
+    },
+    {
+      "name": "build_graph",
+      "type": "http",
+      "config": {
+        "url": "https://content-grapher.aijesusbro-brain.workers.dev",
+        "method": "POST",
+        "body": {
+          "insights": "{{analyze_insights.all_insights}}",
+          "topic": "{{topic}}"
+        }
+      }
+    },
+    {
+      "name": "synthesize_report",
+      "type": "http",
+      "config": {
+        "url": "https://content-synthesizer.aijesusbro-brain.workers.dev",
+        "method": "POST",
+        "body": {
+          "topic": "{{topic}}",
+          "insights": "{{analyze_insights.all_insights}}",
+          "sources": "{{search_sources.sources}}",
+          "knowledge_graph": "{{build_graph.graph}}"
+        }
+      }
+    }
+  ],
+  "trigger": {
+    "type": "manual"
+  }
+}
+
+

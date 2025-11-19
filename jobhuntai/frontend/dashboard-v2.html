@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Exit - AI Outreach Dashboard V2</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0066ff',
+            success: '#00d66f',
+            warning: '#ffaa00',
+            error: '#ff4444',
+            dark: {
+              50: '#f8fafc',
+              100: '#f1f5f9',
+              200: '#e2e8f0',
+              300: '#cbd5e1',
+              400: '#94a3b8',
+              500: '#64748b',
+              600: '#475569',
+              700: '#334155',
+              800: '#1e293b',
+              900: '#0f172a',
+              950: '#020617'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .gradient-bg {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    }
+    .glass {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .pulse-dot {
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .slide-in {
+      animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body class="gradient-bg min-h-screen text-white">
+  <!-- Navigation -->
+  <nav class="glass border-b border-white/10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex items-center space-x-4">
+          <div class="text-2xl font-bold">
+            The <span class="text-primary">Exit</span>
+          </div>
+          <div class="hidden md:flex space-x-6">
+            <a href="#" class="text-white/70 hover:text-white transition-colors">Dashboard</a>
+            <a href="#" class="text-white/70 hover:text-white transition-colors">Campaigns</a>
+            <a href="#" class="text-white/70 hover:text-white transition-colors">Analytics</a>
+            <a href="#" class="text-white/70 hover:text-white transition-colors">Settings</a>
+          </div>
+        </div>
+        <div class="flex items-center space-x-4">
+          <div class="hidden md:block text-sm text-white/70" id="userEmail"></div>
+          <button onclick="logout()" class="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors">
+            Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <!-- Campaigns Overview -->
+    <div id="campaignsView">
+      <div class="flex justify-between items-center mb-8">
+        <div>
+          <h1 class="text-3xl font-bold mb-2">Campaigns</h1>
+          <p class="text-white/70">Manage your autonomous outreach campaigns</p>
+        </div>
+        <button onclick="createCampaignModal()" class="px-6 py-3 bg-primary hover:bg-blue-700 rounded-lg font-medium transition-colors flex items-center space-x-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          </svg>
+          <span>New Campaign</span>
+        </button>
+      </div>
+
+      <!-- Loading State -->
+      <div id="campaignsLoading" class="text-center py-12">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+        <p class="text-white/70">Loading campaigns...</p>
+      </div>
+
+      <!-- Empty State -->
+      <div id="campaignsEmpty" class="hidden text-center py-12">
+        <div class="text-6xl mb-4">🚀</div>
+        <h3 class="text-xl font-semibold mb-2">No campaigns yet</h3>
+        <p class="text-white/70 mb-6">Create your first autonomous outreach campaign</p>
+        <button onclick="createCampaignModal()" class="px-6 py-3 bg-primary hover:bg-blue-700 rounded-lg font-medium transition-colors">
+          Create Campaign
+        </button>
+      </div>
+
+      <!-- Campaigns Grid -->
+      <div id="campaignsGrid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Campaign cards will be rendered here -->
+      </div>
+    </div>
+
+    <!-- Campaign Detail View -->
+    <div id="campaignDetail" class="hidden">
+      <!-- Back Button -->
+      <button onclick="showCampaignsList()" class="flex items-center space-x-2 text-white/70 hover:text-white mb-6 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+        <span>Back to Campaigns</span>
+      </button>
+
+      <!-- Campaign Header -->
+      <div class="glass rounded-xl p-6 mb-8">
+        <div class="flex justify-between items-start">
+          <div>
+            <h1 class="text-3xl font-bold mb-2" id="detailTitle"></h1>
+            <div class="flex items-center space-x-4 text-sm">
+              <span id="detailStatus"></span>
+              <span id="detailStarted" class="text-white/70"></span>
+              <span id="detailStrategy" class="text-white/70"></span>
+            </div>
+          </div>
+          <div class="flex space-x-3">
+            <button id="pauseButton" onclick="pauseCampaign()" class="px-4 py-2 bg-warning/20 hover:bg-warning/30 text-warning rounded-lg transition-colors">
+              Pause
+            </button>
+            <button id="startButton" onclick="startCampaign()" class="hidden px-4 py-2 bg-primary hover:bg-blue-700 rounded-lg transition-colors">
+              Start
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Stats cards will be rendered here -->
+      </div>
+
+      <!-- Charts and Activity -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <!-- Performance Chart -->
+        <div class="lg:col-span-2 glass rounded-xl p-6">
+          <h3 class="text-lg font-semibold mb-4">Campaign Performance</h3>
+          <canvas id="performanceChart" width="400" height="200"></canvas>
+        </div>
+
+        <!-- Agent Status -->
+        <div class="glass rounded-xl p-6">
+          <h3 class="text-lg font-semibold mb-4">Agent Status</h3>
+          <div id="agentStatus" class="space-y-3">
+            <!-- Agent status items will be rendered here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Leads and Activity -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Leads Table -->
+        <div class="glass rounded-xl p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">Leads</h3>
+            <button onclick="addLeadsModal()" class="px-3 py-1 bg-primary/20 hover:bg-primary/30 text-primary rounded-lg text-sm transition-colors">
+              + Add Leads
+            </button>
+          </div>
+          <div id="leadsTable" class="overflow-x-auto">
+            <!-- Leads table will be rendered here -->
+          </div>
+        </div>
+
+        <!-- Live Activity Feed -->
+        <div class="glass rounded-xl p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">Live Activity</h3>
+            <div class="flex items-center space-x-2">
+              <div class="pulse-dot w-2 h-2 bg-success rounded-full"></div>
+              <span class="text-sm text-white/70">Live</span>
+            </div>
+          </div>
+          <div id="activityFeed" class="space-y-3 max-h-96 overflow-y-auto">
+            <!-- Activity items will be rendered here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Strategy Selection Modal -->
+  <div id="strategyModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="glass rounded-xl p-6 max-w-2xl w-full mx-4">
+      <h3 class="text-xl font-semibold mb-4">Select Strategy</h3>
+      <div id="strategyList" class="space-y-3 mb-6">
+        <!-- Strategies will be rendered here -->
+      </div>
+      <div class="flex justify-end space-x-3">
+        <button onclick="closeStrategyModal()" class="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors">
+          Cancel
+        </button>
+        <button onclick="confirmStrategy()" class="px-4 py-2 bg-primary hover:bg-blue-700 rounded-lg transition-colors">
+          Continue
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = window.location.origin;
+    let token = localStorage.getItem('token');
+    let accountId = localStorage.getItem('accountId');
+    let currentCampaignId = null;
+    let activityInterval = null;
+    let performanceChart = null;
+    let selectedStrategy = null;
+
+    // Check auth
+    if (!token || !accountId) {
+      console.error('Dashboard auth failed:', { token: !!token, accountId: !!accountId });
+      alert('Not logged in. Redirecting...');
+      setTimeout(() => window.location.href = '/', 2000);
+    } else {
+      console.log('Dashboard auth success');
+    }
+
+    // Initialize
+    loadCampaigns();
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('accountId');
+      window.location.href = '/';
+    }
+
+    // Load campaigns with enhanced data
+    async function loadCampaigns() {
+      try {
+        const response = await fetch(`${API_URL}/api/campaigns`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error('Failed to load campaigns');
+        const data = await response.json();
+
+        document.getElementById('campaignsLoading').classList.add('hidden');
+
+        if (data.campaigns.length === 0) {
+          document.getElementById('campaignsEmpty').classList.remove('hidden');
+          return;
+        }
+
+        // Load stats and strategies for each campaign
+        const campaignsWithStats = await Promise.all(
+          data.campaigns.map(async (campaign) => {
+            const [statsRes, strategyRes] = await Promise.all([
+              fetch(`${API_URL}/api/campaigns/${campaign.id}/stats`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              }),
+              fetch(`${API_URL}/api/strategies/${campaign.config?.strategy_id || 'standard_b2b'}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              }).catch(() => ({ json: () => ({ strategy: { name: 'Standard B2B' } }) }))
+            ]);
+            
+            const stats = await statsRes.json();
+            const strategy = await strategyRes.json();
+            
+            return { ...campaign, stats, strategy: strategy.strategy };
+          })
+        );
+
+        renderCampaigns(campaignsWithStats);
+      } catch (err) {
+        console.error('Error loading campaigns:', err);
+      }
+    }
+
+    function renderCampaigns(campaigns) {
+      const grid = document.getElementById('campaignsGrid');
+      grid.classList.remove('hidden');
+
+      grid.innerHTML = campaigns.map(c => {
+        const stats = c.stats.leads;
+        const progress = stats.total > 0 ? (stats.contacted / stats.total) * 100 : 0;
+        const replyRate = (stats.reply_rate * 100).toFixed(1);
+        const isActive = c.stats.activity.agents_active;
+
+        return `
+          <div class="glass rounded-xl p-6 hover:bg-white/5 transition-all cursor-pointer slide-in" onclick="showCampaignDetail('${c.id}')">
+            <div class="flex justify-between items-start mb-4">
+              <div>
+                <h3 class="text-xl font-semibold mb-1">${c.name}</h3>
+                <p class="text-white/70 text-sm">${c.strategy?.name || 'Standard B2B'}</p>
+              </div>
+              <div class="flex items-center space-x-2">
+                <div class="w-2 h-2 rounded-full ${isActive ? 'bg-success pulse-dot' : 'bg-white/30'}"></div>
+                <span class="text-xs px-2 py-1 rounded-full ${c.status === 'active' ? 'bg-success/20 text-success' : c.status === 'paused' ? 'bg-warning/20 text-warning' : 'bg-white/20 text-white/70'}">
+                  ${c.status}
+                </span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4 mb-4">
+              <div class="text-center">
+                <div class="text-2xl font-bold">${stats.total}</div>
+                <div class="text-xs text-white/70">Leads</div>
+              </div>
+              <div class="text-center">
+                <div class="text-2xl font-bold">${stats.contacted}</div>
+                <div class="text-xs text-white/70">Contacted</div>
+              </div>
+              <div class="text-center">
+                <div class="text-2xl font-bold">${replyRate}%</div>
+                <div class="text-xs text-white/70">Reply Rate</div>
+              </div>
+            </div>
+
+            <div class="w-full bg-white/10 rounded-full h-2 mb-2">
+              <div class="bg-primary h-2 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
+            </div>
+            <div class="text-xs text-white/70">${progress.toFixed(1)}% complete</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Show campaign detail with enhanced UI
+    async function showCampaignDetail(campaignId) {
+      currentCampaignId = campaignId;
+      document.getElementById('campaignsView').classList.add('hidden');
+      document.getElementById('campaignDetail').classList.remove('hidden');
+
+      await loadCampaignDetail(campaignId);
+      loadActivityFeed();
+      activityInterval = setInterval(loadActivityFeed, 3000);
+    }
+
+    async function loadCampaignDetail(campaignId) {
+      try {
+        const [campaignRes, statsRes, leadsRes, strategiesRes] = await Promise.all([
+          fetch(`${API_URL}/api/campaigns/${campaignId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`${API_URL}/api/campaigns/${campaignId}/stats`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`${API_URL}/api/leads?campaign_id=${campaignId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`${API_URL}/api/strategies`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+        ]);
+
+        const campaign = await campaignRes.json();
+        const stats = await statsRes.json();
+        const leads = await leadsRes.json();
+        const strategies = await strategiesRes.json();
+
+        // Update header
+        document.getElementById('detailTitle').textContent = campaign.campaign.name;
+        document.getElementById('detailStatus').innerHTML = `
+          <span class="px-2 py-1 rounded-full text-xs ${campaign.campaign.status === 'active' ? 'bg-success/20 text-success' : 'bg-white/20 text-white/70'}">
+            ${campaign.campaign.status}
+          </span>
+        `;
+
+        if (campaign.campaign.started_at) {
+          const startedDate = new Date(campaign.campaign.started_at);
+          document.getElementById('detailStarted').textContent = `Started ${startedDate.toLocaleDateString()}`;
+        }
+
+        const strategyId = campaign.campaign.config?.strategy_id || 'standard_b2b';
+        const strategy = strategies.strategies.find(s => s.id === strategyId);
+        document.getElementById('detailStrategy').textContent = `Strategy: ${strategy?.name || 'Standard B2B'}`;
+
+        // Show/hide buttons
+        if (campaign.campaign.status === 'active') {
+          document.getElementById('pauseButton').classList.remove('hidden');
+          document.getElementById('startButton').classList.add('hidden');
+        } else {
+          document.getElementById('pauseButton').classList.add('hidden');
+          document.getElementById('startButton').classList.remove('hidden');
+        }
+
+        renderStats(stats);
+        renderLeads(leads.leads);
+        renderAgentStatus();
+        renderPerformanceChart(stats);
+      } catch (err) {
+        console.error('Error loading campaign detail:', err);
+      }
+    }
+
+    function renderStats(stats) {
+      const { leads, conversations, activity } = stats;
+      const replyRate = (leads.reply_rate * 100).toFixed(1);
+      const contactRate = leads.total > 0 ? ((leads.contacted / leads.total) * 100).toFixed(1) : 0;
+
+      document.getElementById('statsGrid').innerHTML = `
+        <div class="glass rounded-xl p-6 text-center">
+          <div class="text-3xl font-bold text-primary mb-2">${leads.total}</div>
+          <div class="text-sm text-white/70">Total Leads</div>
+        </div>
+        <div class="glass rounded-xl p-6 text-center">
+          <div class="text-3xl font-bold text-success mb-2">${leads.contacted}</div>
+          <div class="text-sm text-white/70">Contacted</div>
+          <div class="text-xs text-success mt-1">${contactRate}% of total</div>
+        </div>
+        <div class="glass rounded-xl p-6 text-center">
+          <div class="text-3xl font-bold text-warning mb-2">${leads.replied}</div>
+          <div class="text-sm text-white/70">Replies</div>
+          <div class="text-xs text-warning mt-1">${replyRate}% reply rate</div>
+        </div>
+        <div class="glass rounded-xl p-6 text-center">
+          <div class="text-3xl font-bold text-primary mb-2">${conversations.total}</div>
+          <div class="text-sm text-white/70">Conversations</div>
+        </div>
+      `;
+    }
+
+    function renderLeads(leads) {
+      if (leads.length === 0) {
+        document.getElementById('leadsTable').innerHTML = `
+          <div class="text-center py-8">
+            <div class="text-4xl mb-2">👥</div>
+            <p class="text-white/70">No leads yet</p>
+          </div>
+        `;
+        return;
+      }
+
+      document.getElementById('leadsTable').innerHTML = `
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="border-b border-white/10">
+                <th class="text-left py-3 px-4 text-sm text-white/70">Name</th>
+                <th class="text-left py-3 px-4 text-sm text-white/70">Company</th>
+                <th class="text-left py-3 px-4 text-sm text-white/70">Status</th>
+                <th class="text-left py-3 px-4 text-sm text-white/70">Added</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${leads.map(lead => `
+                <tr class="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer" onclick="showLeadDetail('${lead.id}')">
+                  <td class="py-3 px-4">
+                    <div class="font-medium">${lead.name}</div>
+                    <div class="text-sm text-white/70">${lead.email}</div>
+                  </td>
+                  <td class="py-3 px-4">${lead.company}</td>
+                  <td class="py-3 px-4">
+                    <span class="px-2 py-1 rounded-full text-xs ${getStatusBadge(lead.status)}">
+                      ${lead.status}
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 text-sm text-white/70">${new Date(lead.created_at).toLocaleDateString()}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function getStatusBadge(status) {
+      const badges = {
+        'new': 'bg-white/20 text-white/70',
+        'contacted': 'bg-warning/20 text-warning',
+        'replied': 'bg-success/20 text-success',
+        'qualified': 'bg-success/20 text-success',
+        'unqualified': 'bg-error/20 text-error'
+      };
+      return badges[status] || 'bg-white/20 text-white/70';
+    }
+
+    function renderAgentStatus() {
+      const agents = [
+        { name: 'Research', status: 'active', description: 'Enriching lead data' },
+        { name: 'Strategy', status: 'idle', description: 'Analyzing approach' },
+        { name: 'Timing', status: 'idle', description: 'Calculating send time' },
+        { name: 'Outreach', status: 'active', description: 'Generating messages' }
+      ];
+
+      document.getElementById('agentStatus').innerHTML = agents.map(agent => `
+        <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+          <div class="flex items-center space-x-3">
+            <div class="w-2 h-2 rounded-full ${agent.status === 'active' ? 'bg-success pulse-dot' : 'bg-white/30'}"></div>
+            <div>
+              <div class="font-medium">${agent.name}</div>
+              <div class="text-xs text-white/70">${agent.description}</div>
+            </div>
+          </div>
+          <span class="text-xs px-2 py-1 rounded-full ${agent.status === 'active' ? 'bg-success/20 text-success' : 'bg-white/20 text-white/70'}">
+            ${agent.status}
+          </span>
+        </div>
+      `).join('');
+    }
+
+    function renderPerformanceChart(stats) {
+      const ctx = document.getElementById('performanceChart').getContext('2d');
+      
+      if (performanceChart) {
+        performanceChart.destroy();
+      }
+
+      performanceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          datasets: [{
+            label: 'Leads Contacted',
+            data: [12, 19, 3, 5, 2, 3, 8],
+            borderColor: '#0066ff',
+            backgroundColor: 'rgba(0, 102, 255, 0.1)',
+            tension: 0.4
+          }, {
+            label: 'Replies',
+            data: [2, 3, 1, 2, 1, 1, 3],
+            borderColor: '#00d66f',
+            backgroundColor: 'rgba(0, 214, 111, 0.1)',
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: {
+                color: '#ffffff'
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: {
+                color: '#ffffff'
+              },
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              }
+            },
+            y: {
+              ticks: {
+                color: '#ffffff'
+              },
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    async function loadActivityFeed() {
+      if (!currentCampaignId) return;
+
+      try {
+        const response = await fetch(`${API_URL}/api/campaigns/${currentCampaignId}/activity?limit=10`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+        renderActivityFeed(data.activities);
+      } catch (err) {
+        console.error('Error loading activity:', err);
+      }
+    }
+
+    function renderActivityFeed(activities) {
+      const feed = document.getElementById('activityFeed');
+
+      if (activities.length === 0) {
+        feed.innerHTML = '<div class="text-center py-4 text-white/70">No activity yet</div>';
+        return;
+      }
+
+      feed.innerHTML = activities.map(activity => `
+        <div class="flex items-start space-x-3 p-3 bg-white/5 rounded-lg slide-in">
+          <div class="text-2xl">${activity.icon}</div>
+          <div class="flex-1">
+            <div class="text-sm">${activity.description}</div>
+            <div class="text-xs text-white/70 mt-1">${timeAgo(activity.timestamp)}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function timeAgo(timestamp) {
+      const seconds = Math.floor((Date.now() - timestamp) / 1000);
+      if (seconds < 60) return 'Just now';
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes}m ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours}h ago`;
+      const days = Math.floor(hours / 24);
+      return `${days}d ago`;
+    }
+
+    function showCampaignsList() {
+      document.getElementById('campaignDetail').classList.add('hidden');
+      document.getElementById('campaignsView').classList.remove('hidden');
+      currentCampaignId = null;
+
+      if (activityInterval) {
+        clearInterval(activityInterval);
+      }
+
+      loadCampaigns();
+    }
+
+    async function startCampaign() {
+      if (!currentCampaignId) return;
+
+      try {
+        await fetch(`${API_URL}/api/campaigns/${currentCampaignId}/start`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        await loadCampaignDetail(currentCampaignId);
+      } catch (err) {
+        console.error('Error starting campaign:', err);
+      }
+    }
+
+    async function pauseCampaign() {
+      if (!currentCampaignId) return;
+
+      try {
+        await fetch(`${API_URL}/api/campaigns/${currentCampaignId}/pause`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        await loadCampaignDetail(currentCampaignId);
+      } catch (err) {
+        console.error('Error pausing campaign:', err);
+      }
+    }
+
+    function showLeadDetail(leadId) {
+      console.log('Show lead detail:', leadId);
+      // TODO: Implement lead detail modal
+    }
+
+    // Enhanced campaign creation with strategy selection
+    async function createCampaignModal() {
+      try {
+        const strategiesRes = await fetch(`${API_URL}/api/strategies`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const strategies = await strategiesRes.json();
+
+        document.getElementById('strategyList').innerHTML = strategies.strategies.map(strategy => `
+          <div class="p-4 border border-white/10 rounded-lg cursor-pointer hover:bg-white/5 transition-colors" onclick="selectStrategy('${strategy.id}')">
+            <div class="font-medium">${strategy.name}</div>
+            <div class="text-sm text-white/70 mt-1">${strategy.description}</div>
+            <div class="text-xs text-white/50 mt-2">${strategy.steps} steps</div>
+          </div>
+        `).join('');
+
+        document.getElementById('strategyModal').classList.remove('hidden');
+      } catch (err) {
+        console.error('Error loading strategies:', err);
+        // Fallback to simple modal
+        createSimpleCampaign();
+      }
+    }
+
+    function selectStrategy(strategyId) {
+      selectedStrategy = strategyId;
+      document.querySelectorAll('#strategyList > div').forEach(el => {
+        el.classList.remove('border-primary', 'bg-primary/10');
+        el.classList.add('border-white/10');
+      });
+      event.target.closest('div').classList.add('border-primary', 'bg-primary/10');
+    }
+
+    function closeStrategyModal() {
+      document.getElementById('strategyModal').classList.add('hidden');
+      selectedStrategy = null;
+    }
+
+    async function confirmStrategy() {
+      if (!selectedStrategy) {
+        alert('Please select a strategy');
+        return;
+      }
+
+      const name = prompt('Campaign Name:', 'My Outreach Campaign');
+      if (!name) return;
+
+      const companyName = prompt('Your Company Name:', 'The Exit');
+      const senderName = prompt('Sender Name:', 'Alex Morgan');
+      const senderEmail = prompt('Sender Email:', 'alex@aijesusbro.com');
+      const valueProposition = prompt('What value do you provide?', 'We help B2B SaaS companies close more deals with AI-powered outreach');
+
+      createCampaign({
+        name,
+        config: {
+          strategy_id: selectedStrategy,
+          company_name: companyName,
+          sender_name: senderName,
+          sender_email: senderEmail,
+          value_proposition: valueProposition,
+          differentiators: 'Fully autonomous, learns what works, adapts in real-time'
+        }
+      });
+
+      closeStrategyModal();
+    }
+
+    function createSimpleCampaign() {
+      const name = prompt('Campaign Name:', 'My Outreach Campaign');
+      if (!name) return;
+
+      const companyName = prompt('Your Company Name:', 'The Exit');
+      const senderName = prompt('Sender Name:', 'Alex Morgan');
+      const senderEmail = prompt('Sender Email:', 'alex@aijesusbro.com');
+      const valueProposition = prompt('What value do you provide?', 'We help B2B SaaS companies close more deals with AI-powered outreach');
+
+      createCampaign({
+        name,
+        config: {
+          company_name: companyName,
+          sender_name: senderName,
+          sender_email: senderEmail,
+          value_proposition: valueProposition,
+          differentiators: 'Fully autonomous, learns what works, adapts in real-time'
+        }
+      });
+    }
+
+    async function createCampaign(data) {
+      try {
+        const response = await fetch(`${API_URL}/api/campaigns`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+
+        if (!response.ok) throw new Error('Failed to create campaign');
+
+        const result = await response.json();
+        alert('Campaign created! Now add some leads.');
+
+        loadCampaigns();
+      } catch (err) {
+        alert('Error creating campaign: ' + err.message);
+      }
+    }
+
+    function addLeadsModal() {
+      if (!currentCampaignId) {
+        alert('Please select a campaign first');
+        return;
+      }
+
+      const leadsInput = prompt(
+        'Add leads (one per line, format: Name, Email, Company):\n\nExample:\nJohn Doe, john@openai.com, openai.com\nJane Smith, jane@anthropic.com, anthropic.com',
+        'John Doe, john@example.com, example.com'
+      );
+
+      if (!leadsInput) return;
+
+      const leads = leadsInput.split('\n').map(line => {
+        const [name, email, company] = line.split(',').map(s => s.trim());
+        return { name, email, company };
+      }).filter(l => l.name && l.email && l.company);
+
+      if (leads.length === 0) {
+        alert('No valid leads found');
+        return;
+      }
+
+      addLeads(leads);
+    }
+
+    async function addLeads(leads) {
+      try {
+        const response = await fetch(`${API_URL}/api/leads`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            campaign_id: currentCampaignId,
+            leads
+          })
+        });
+
+        if (!response.ok) throw new Error('Failed to add leads');
+
+        const result = await response.json();
+        alert(`Added ${result.created} leads!`);
+
+        await loadCampaignDetail(currentCampaignId);
+      } catch (err) {
+        alert('Error adding leads: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>

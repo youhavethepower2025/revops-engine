@@ -94,3 +94,12 @@ credentials.json
 .dev.vars
 worker/
 wrangler.toml.backup
+
+# Separate git repositories
+DevMCP/
+aijesusbro.com/
+medtainer-dev/
+spectrum-production/
+rando-projects/
+chief-ai-implementation-github/
+

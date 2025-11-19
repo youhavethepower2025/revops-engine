@@ -1,0 +1,97 @@
+name = "jobhunt-ai"
+main = "workers/index.js"
+compatibility_date = "2024-01-01"
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "revops-os-db"
+database_id = "" # Will be populated after: wrangler d1 create
+
+# Workers AI (Llama 70B, Qwen, etc.)
+[ai]
+binding = "AI"
+
+# Browser Rendering (Puppeteer/Chrome)
+[browser]
+binding = "BROWSER"
+
+# Durable Objects (Stateful coordination)
+[[durable_objects.bindings]]
+name = "ORG_COORDINATOR"
+class_name = "OrgCoordinator"
+script_name = "jobhunt-ai"
+
+# Migrations for Durable Objects
+[[migrations]]
+tag = "v1"
+new_classes = ["OrgCoordinator"]
+
+# Queues (Async work distribution)
+[[queues.producers]]
+queue = "org-tasks"
+binding = "ORG_QUEUE"
+
+[[queues.producers]]
+queue = "role-tasks"
+binding = "ROLE_QUEUE"
+
+[[queues.consumers]]
+queue = "org-tasks"
+max_batch_size = 10
+max_batch_timeout = 30
+max_retries = 3
+dead_letter_queue = "org-tasks-dlq"
+
+[[queues.consumers]]
+queue = "role-tasks"
+max_batch_size = 50
+max_batch_timeout = 30
+max_retries = 3
+dead_letter_queue = "role-tasks-dlq"
+
+# Environment: Development
+[env.dev]
+vars = { ENVIRONMENT = "dev" }
+
+[env.dev.ai]
+binding = "AI"
+
+[env.dev.browser]
+binding = "BROWSER"
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "revops-os-db-dev"
+database_id = "1732e74a-4f4f-48ae-95a8-fb0fb73416df"
+
+[[env.dev.durable_objects.bindings]]
+name = "ORG_COORDINATOR"
+class_name = "OrgCoordinator"
+script_name = "jobhunt-ai-dev"
+
+[[env.dev.queues.producers]]
+queue = "org-tasks-dev"
+binding = "ORG_QUEUE"
+
+[[env.dev.queues.producers]]
+queue = "role-tasks-dev"
+binding = "ROLE_QUEUE"
+
+# Environment: Staging
+[env.staging]
+vars = { ENVIRONMENT = "staging" }
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "jobhunt-ai-db-staging"
+database_id = "" # Will be populated
+
+# Environment: Production
+[env.production]
+vars = { ENVIRONMENT = "production" }
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "jobhunt-ai-db-production"
+database_id = "" # Will be populated

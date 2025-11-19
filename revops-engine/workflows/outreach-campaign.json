@@ -1,0 +1,68 @@
+{
+  "name": "outreach-campaign",
+  "description": "Generate → Review → Schedule → Send outreach",
+  "steps": [
+    {
+      "name": "generate_messages",
+      "type": "http",
+      "config": {
+        "url": "https://revops-writer.aijesusbro-brain.workers.dev",
+        "method": "POST",
+        "body": {
+          "prospect": "{{prospect}}",
+          "research_notes": "{{research_notes}}",
+          "campaign_context": "{{campaign_context}}"
+        },
+        "parallel": true,
+        "for_each": "prospects"
+      }
+    },
+    {
+      "name": "store_drafts",
+      "type": "worker",
+      "config": {
+        "worker": "revops-api",
+        "action": "store_messages",
+        "data": "{{generate_messages.messages}}"
+      }
+    },
+    {
+      "name": "wait_for_approval",
+      "type": "wait",
+      "config": {
+        "condition": "all_approved",
+        "timeout": 86400
+      }
+    },
+    {
+      "name": "send_messages",
+      "type": "http",
+      "config": {
+        "url": "https://api.sendgrid.com/v3/mail/send",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer {{SENDGRID_API_KEY}}"
+        },
+        "body": "{{wait_for_approval.approved_messages}}",
+        "for_each": "wait_for_approval.approved_messages"
+      }
+    },
+    {
+      "name": "update_status",
+      "type": "worker",
+      "config": {
+        "worker": "revops-api",
+        "action": "update_message_status",
+        "data": {
+          "messages": "{{send_messages.sent_messages}}",
+          "status": "sent"
+        }
+      }
+    }
+  ],
+  "trigger": {
+    "type": "manual"
+  }
+}
+
+

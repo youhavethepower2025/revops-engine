@@ -1,0 +1,20 @@
+{
+  "name": "revops-engine",
+  "version": "1.0.0",
+  "description": "RevOps Engine - Sales intelligence and outreach system",
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "deploy:dev": "wrangler deploy --env dev",
+    "dev": "wrangler dev",
+    "tail": "wrangler tail --env dev"
+  },
+  "dependencies": {
+    "hono": "^4.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
+
+

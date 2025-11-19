@@ -1,0 +1,36 @@
+name = "spectrum-api"
+main = "src/index.ts"
+compatibility_date = "2024-10-18"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database for agent definitions and conversations
+[[d1_databases]]
+binding = "DB"
+database_name = "spectrum-db"
+database_id = "f249b299-584c-400b-bb9f-c1b0a1acdb13"
+
+# Durable Objects for conversation state (per-client isolation)
+[[durable_objects.bindings]]
+name = "CONVERSATION"
+class_name = "ConversationState"
+script_name = "spectrum-api"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ConversationState"]
+
+# Workers AI binding for edge LLM inference
+[ai]
+binding = "AI"
+
+# Service bindings for Worker-to-Worker communication
+[[services]]
+binding = "MCP"
+service = "vapi-mcp-server"
+environment = "production"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "production"
+CLOUDFLAREMCP_URL = "https://vapi-mcp-server.aijesusbro-brain.workers.dev"
+REVOPS_OS_URL = "https://aijesusbro-brain.workers.dev/revops"

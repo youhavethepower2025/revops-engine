@@ -1,0 +1,15 @@
+{
+  "name": "transcription-agent",
+  "version": "1.0.0",
+  "description": "A Cloud Function to transcribe audio files using Google Speech-to-Text.",
+  "main": "index.js",
+  "dependencies": {
+    "@google-cloud/speech": "^6.0.0",
+    "@google-cloud/storage": "^7.0.0",
+    "@google-cloud/pubsub": "^4.0.0",
+    "cloudevents": "^1.0.0"
+  },
+  "scripts": {
+    "start": "node index.js"
+  }
+}

@@ -1,0 +1,757 @@
+# The Complete Guide to Retell.ai Inbound Voice Agent Prompts
+
+**Retell.ai voice agents require structured, multi-state prompt architectures with dynamic variable injection and explicit tool calling instructions to handle production conversations reliably.** The platform achieves ~800ms response latency through proprietary turn-taking models and supports multi-prompt trees with state-specific tools, achieving 70%+ success rates in complex function calling scenarios. This guide provides production-ready examples, JSON structures, and best practices from official documentation and real-world implementations.
+
+The most effective Retell.ai prompts break conversations into focused states, use `{{variable}}` syntax for personalization, explicitly define tool calling conditions, and include progressive validation workflows. Multi-state agents significantly reduce hallucinations compared to single-prompt approaches by limiting context and tool availability per conversation phase. Real-world deployments show structured prompts with clear section organization (Identity, Style, Guidelines, Task, Rebuttals) consistently outperform unstructured approaches.
+
+## Understanding Retell.ai's three agent architectures
+
+Retell.ai offers three distinct approaches to building conversational agents, each suited for different complexity levels. **Single-prompt agents** use one comprehensive prompt defining all behavior, ideal for straightforward use cases with linear flows and fewer than 3-4 decision branches. These are easiest to set up but become difficult to maintain as complexity grows, with higher risk of the agent deviating from instructions.
+
+**Multi-prompt agents** (also called LLM States) structure conversations as state machines where each state has its own focused prompt, available tools, and transition logic. This architecture excels for complex workflows requiring distinct conversation phases like information collection, appointment booking, and payment processing. By limiting prompt length and tool choices per state, multi-prompt agents dramatically reduce hallucination and provide better control.
+
+**Conversation Flow agents** use visual node-based workflows with the most fine-grained control and deterministic transitions. Each node type (LLM nodes, function nodes, response nodes, SMS nodes) handles specific conversation scenarios with conditional branching logic. This approach works best for compliance-sensitive applications requiring predictable outcomes, complex scenarios with 5+ tools, or when multiple stakeholders need to understand conversation logic visually.
+
+## Complete JSON structure for multi-state agents
+
+The foundational JSON structure for a production multi-state agent follows this pattern:
+
+```json
+{
+  "llm_id": "oBeDLoLOeuAbiuaMFXRtDOLriTJ5tSxD",
+  "model": "gpt-4o",
+  "model_temperature": 0,
+  "model_high_priority": true,
+  "tool_call_strict_mode": true,
+  "general_prompt": "You are a friendly AI assistant for Retell Hospital. Be concise and conversational.",
+  "general_tools": [
+    {
+      "type": "end_call",
+      "name": "end_call",
+      "description": "End the call with user."
+    }
+  ],
+  "states": [
+    {
+      "name": "information_collection",
+      "state_prompt": "You will follow the steps below to collect information:\n1. Ask for user's name. Wait for response.\n2. Ask for date of birth. Wait for response.\n3. Ask for reason for visit. Wait for response.\nAfter all questions are answered, transition to appointment_booking.",
+      "edges": [
+        {
+          "destination_state_name": "appointment_booking",
+          "description": "Transition to book an appointment.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "user_name": {
+                "type": "string",
+                "description": "User full name."
+              },
+              "date_of_birth": {
+                "type": "string",
+                "description": "User date of birth."
+              }
+            },
+            "required": ["user_name"]
+          }
+        }
+      ],
+      "tools": [
+        {
+          "type": "transfer_call",
+          "name": "transfer_to_support",
+          "description": "Transfer to the support team.",
+          "transfer_destination": {
+            "type": "predefined",
+            "number": "+16175551212"
+          }
+        }
+      ]
+    },
+    {
+      "name": "appointment_booking",
+      "state_prompt": "You will follow the steps below to book an appointment for {{user_name}}:\n1. Call check_availability to see open slots\n2. Present options clearly\n3. Book using book_appointment tool\nAfter booking is confirmed, end the call.",
+      "tools": [
+        {
+          "type": "check_availability_cal",
+          "name": "check_availability",
+          "description": "Check available time slots.",
+          "cal_api_key": "cal_live_xxxxxxxxxxxx",
+          "event_type_id": 60444,
+          "timezone": "America/Los_Angeles"
+        },
+        {
+          "type": "book_appointment_cal",
+          "name": "book_appointment",
+          "description": "Book the appointment.",
+          "cal_api_key": "cal_live_xxxxxxxxxxxx",
+          "event_type_id": 60444,
+          "timezone": "America/Los_Angeles"
+        }
+      ]
+    }
+  ],
+  "starting_state": "information_collection",
+  "start_speaker": "agent",
+  "begin_message": "Hey I am a virtual assistant calling from Retell Hospital.",
+  "default_dynamic_variables": {
+    "customer_name": "John Doe",
+    "hospital_name": "Retell Hospital"
+  }
+}
+```
+
+**Critical implementation details**: The effective prompt for each state equals `general_prompt` + `state_prompt`, allowing shared context across all states while maintaining state-specific instructions. State names must use only alphanumeric characters, underscores, or dashes with a maximum of 64 characters. The `edges` array defines transitions with optional parameters that carry context between states, while `tools` are state-specific and only available when the agent is in that particular state.
+
+## Dynamic variables with double curly brace syntax
+
+Dynamic variables enable personalization through the `{{variable_name}}` syntax, injecting real-time data into agent responses. Variables can be set through three methods: via the Create Phone Call API with the `retell_llm_dynamic_variables` parameter, through inbound call webhook responses with `dynamic_variables`, or as default fallback values in the agent configuration with `default_dynamic_variables`.
+
+```json
+{
+  "from_number": "+14157774444",
+  "to_number": "+12137774445",
+  "override_agent_id": "oBeDLoLOeuAbiuaMFXRtDOLriTJ5tSxD",
+  "retell_llm_dynamic_variables": {
+    "customer_name": "John Smith",
+    "order_id": "ORD-12345",
+    "appointment_date": "March 15th at 2 PM",
+    "account_balance": "150 dollars"
+  }
+}
+```
+
+**All values must be strings** - numbers, booleans, and other data types are not supported. Use `"150"` not `150`, and `"true"` not `true`. When a variable is not set, it remains as literal text with curly braces in the output, enabling defensive checking with conditions like `if {{user_name}} contains {{` to detect unset variables.
+
+System-provided variables are automatically available without configuration. For all calls: `{{current_time}}` provides current time in America/Los_Angeles timezone, `{{current_time_Australia/Sydney}}` for specific timezones, `{{current_calendar}}` shows a 14-day calendar view, and `{{call_type}}` indicates web_call or phone_call. For phone calls specifically: `{{direction}}` shows inbound or outbound, `{{user_number}}` provides the user's phone number, and `{{agent_number}}` shows the agent's number. For multi-prompt agents: `{{current_agent_state}}` and `{{previous_agent_state}}` track conversation flow.
+
+Nested variables support advanced use cases: `{{current_time_{{my_timezone}}}}` first evaluates the inner variable, then uses its value to construct the outer variable. If `my_timezone` equals "America/Los_Angeles", it resolves to `{{current_time_America/Los_Angeles}}`, which then evaluates to the actual time string.
+
+## Production-ready prompt examples from real implementations
+
+The most comprehensive real-world example comes from a real estate voice agent implementation handling lead qualification, callback scheduling, and property tours:
+
+```
+#Identity
+You are Chloe from Retell Real Estate company calling user over the phone. You are a pleasant and friendly receptionist caring deeply for the user. Greeting with {{name}} at the beginning of the call "Hello, {{name}}. This is Chloe from Retell Real Estate company. Am I catching you at a good time?"
+
+#Context
+{{name}} has just submitted an online form regarding a property that is for rent.
+
+#Role
+Your role is to ask {{name}} questions to make sure that the inquired property is the right fit.
+
+#Style Guardrails
+- Be Concise: Respond succinctly, addressing one topic at most.
+- Embrace Variety: Use diverse language and rephrasing to enhance clarity without repeating content.
+- Be Conversational: Use everyday language, making the chat feel like talking to a friend.
+- Be Proactive: Lead the conversation, often wrapping up with a question or next-step suggestion.
+- Avoid multiple questions in a single response.
+- Get clarity: If the user only partially answers a question, or if the answer is unclear, keep asking to get clarity.
+- Use a colloquial way of referring to the date (like Friday, Jan 14th, or Tuesday, Jan 12th, 2024 at 8am).
+
+#Response Guideline
+- Stay in Character: Keep conversations within your role's scope, guiding them back creatively without repeating.
+- Ensure Fluid Dialogue: Respond in a role-appropriate, direct manner to maintain a smooth conversation flow.
+```
+
+For appointment scheduling with progressive validation, this pattern ensures accuracy:
+
+```
+#Role
+You are Retell Real Estate's assistant and help {{name}} to book a viewing for the inquired property. The current year is 2024.
+
+#Task
+Step 1: Ask the user to suggest a date for the viewing. Take their word exactly as is. Do not make up any dates.
+Step 2: Repeat the date and time the user suggested and ask for confirmation.
+Step 3: Run the 'check_availability' function to check Retell Real Estate's availability. List the available times. Do not list any times, if you haven't got any webhook response.
+Step 4: Make sure the user chooses an available time slot you mentioned before.
+Step 5: If the user wants to book a viewing within the available times, ask for the start time of the viewing.
+Step 6: Confirm the start time of the viewing. Correct if necessary. If you corrected any information, repeat it again to confirm with the user.
+Step 7: Use 'book_viewing' function to book the viewing.
+Step 8: Wait for a webhook response to confirm the booking. If you don't receive a confirmation it means that there was a problem.
+
+#Rules:
+- Don't say "hundred" when talking about times. Example: 9am
+- Take their word exactly as is. For example: If they say "tomorrow", the property "times" must be tomorrow.
+- Never assume a date the user did not say.
+- Always make sure that the time slot is available before booking a viewing.
+```
+
+Customer service agents benefit from context preservation patterns:
+
+```
+## Maintaining Context
+
+Ensure that the AI agent remembers the user's intent across multi-turn conversations. 
+
+"If the user says, 'I need help with my subscription' and later adds, 'Can you also check my billing?', connect these inputs under the same subscription account context."
+
+Use session variables to store the user's initial request (e.g., subscription ID). Link follow-up queries to the stored context. Configure fallback mechanisms for incomplete inputs.
+```
+
+Multi-step workflows break down complex processes:
+
+```
+## Multi-Step Appointment Booking
+
+Break down complex processes into clear steps:
+
+Step 1 - Confirm service type:
+"What kind of appointment do you need?"
+
+Step 2 - Collect time and date:
+"What time works best for you on {{preferred_date}}?"
+
+Step 3 - Validate and offer alternatives:
+"Unfortunately, that slot is booked. Would you like {{alternative_times}}?"
+
+Step 4 - Confirm details:
+"Perfect! I've scheduled your {{service_type}} appointment for {{confirmed_time}}. You'll receive a confirmation email shortly."
+
+At each step:
+- Validate input format (date, time)
+- Check availability via API
+- Persist data across steps
+- Offer clear alternatives if issues arise
+```
+
+## Tool and function calling with JSON schemas
+
+All custom function definitions in Retell.ai follow JSON Schema format with a critical requirement: **the top-level JSON schema MUST include `"type": "object"`** - this is the most common mistake causing tool creation failures.
+
+Basic custom function template structure:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "parameter_name": {
+      "type": "string|integer|boolean|array|object",
+      "description": "Clear description of what this parameter represents"
+    }
+  },
+  "required": ["parameter_name"]
+}
+```
+
+For a customer lookup function in a CRM system:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string",
+      "description": "The unique customer identifier"
+    },
+    "fields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of fields to retrieve (name, email, phone, address)"
+    }
+  },
+  "required": ["customer_id"]
+}
+```
+
+Data collection forms use comprehensive property definitions:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "first_name": {
+      "type": "string",
+      "description": "Customer's first name"
+    },
+    "last_name": {
+      "type": "string",
+      "description": "Customer's last name"
+    },
+    "email": {
+      "type": "string",
+      "description": "Customer's email address in valid format"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Phone number in E.164 format (e.g., +14155552671)"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Reason for appointment"
+    }
+  },
+  "required": ["first_name", "last_name", "email", "phone"]
+}
+```
+
+When Retell calls your custom function, it sends this request payload:
+
+```json
+{
+  "call": {
+    "call_type": "phone_call",
+    "from_number": "+12137771234",
+    "to_number": "+12137771235",
+    "direction": "inbound",
+    "call_id": "Jabr9TXYYJHfvl6Syypi88rdAHYHmcq6",
+    "agent_id": "oBeDLoLOeuAbiuaMFXRtDOLriTJ5tSxD",
+    "retell_llm_dynamic_variables": {
+      "customer_name": "John Doe"
+    }
+  },
+  "name": "get_weather",
+  "args": {
+    "city": "New York"
+  }
+}
+```
+
+Backend handler implementation with security verification:
+
+```javascript
+import { Retell } from "retell-sdk";
+
+app.post("/check-weather", async (req, res) => {
+  // Verify request is from Retell
+  if (
+    !Retell.verify(
+      JSON.stringify(req.body),
+      process.env.RETELL_API_KEY,
+      req.headers["x-retell-signature"]
+    )
+  ) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const content = req.body;
+  
+  if (content.args.city === "New York") {
+    return res.json("25°F and sunny");
+  } else {
+    return res.json("20°F and cloudy");
+  }
+});
+```
+
+Prompt integration explicitly instructs when to call tools:
+
+```
+## Tool Usage Instructions
+1. Gather initial information about customer's issue
+2. Ask if user needs refund or replacement:
+   - If refund needed → call function transfer_to_support
+   - If replacement needed → transition to replacement state
+3. For general info → ask for order number
+
+When user provided the city name, please get the weather for that city by calling the `get_weather` function.
+```
+
+**Pre-defined tools** provided by Retell include end_call for gracefully ending conversations, transfer_call for both cold and warm transfers to phone numbers or other agents, check_availability_cal for Cal.com appointment slots, and book_appointment_cal for scheduling appointments. These tools handle common operations without custom backend implementation.
+
+## State transitions and edge parameters for context passing
+
+State transitions carry information between conversation phases through edge parameters. When defining an edge, specify a JSON schema describing what data to extract and pass:
+
+```json
+{
+  "name": "information_collection",
+  "state_prompt": "Collect user information...",
+  "edges": [
+    {
+      "destination_state_name": "product_information",
+      "description": "Transition after collecting user details",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user_name": {
+            "type": "string",
+            "description": "User full name."
+          },
+          "user_email": {
+            "type": "string",
+            "description": "User email address."
+          },
+          "order_number": {
+            "type": "string",
+            "description": "Customer order number."
+          }
+        },
+        "required": ["user_name", "order_number"]
+      }
+    }
+  ]
+}
+```
+
+In the destination state prompt, reference these parameters using variable syntax:
+
+```
+state_prompt: "Thank you {{user_name}}, I found your order {{order_number}}. Let me provide you with the details..."
+```
+
+Complex multi-state flows demonstrate sophisticated routing logic:
+
+```json
+{
+  "states": [
+    {
+      "name": "greeting",
+      "state_prompt": "## Task\n1. Greet the customer warmly\n2. Ask how you can help them today\n3. Listen for their intent\n- If they mention an order issue, transition to order_support\n- If they want to make a purchase, transition to sales\n- If general inquiry, transition to information",
+      "edges": [
+        {
+          "destination_state_name": "order_support",
+          "description": "Customer has order issue"
+        },
+        {
+          "destination_state_name": "sales",
+          "description": "Customer wants to purchase"
+        },
+        {
+          "destination_state_name": "information",
+          "description": "General inquiry"
+        }
+      ]
+    },
+    {
+      "name": "order_support",
+      "state_prompt": "## Task\n1. Ask for order number\n2. Look up order using check_order tool\n3. Based on issue type:\n- Refund request: transition to refund_processing\n- Replacement: transition to replacement_flow\n- Status check: provide info and transition to resolution",
+      "edges": [
+        {
+          "destination_state_name": "refund_processing",
+          "description": "Process refund request",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "order_id": {"type": "string"},
+              "reason": {"type": "string"}
+            },
+            "required": ["order_id"]
+          }
+        }
+      ],
+      "tools": [
+        {
+          "type": "custom_function",
+          "name": "check_order",
+          "description": "Check order status in database"
+        }
+      ]
+    }
+  ],
+  "starting_state": "greeting"
+}
+```
+
+The transition description should be clear and actionable, explicitly stating the condition that triggers the transition. State-specific tools are only available in that state, preventing inappropriate function calls and reducing confusion for the LLM.
+
+## Interruption handling and backchannel responses
+
+Retell.ai's proprietary turn-taking model addresses interruption handling through advanced contextual understanding using LLMs to recognize tone shifts, pauses, and sentence patterns. The system achieves ~800ms response time by predicting when to take turns and allowing users to interrupt at any time with blazingly fast reactions.
+
+Configure interruption sensitivity in the agent API:
+
+```json
+{
+  "interruption_sensitivity": 1,
+  "responsiveness": 1
+}
+```
+
+The interruption_sensitivity slider controls how easily users can interrupt (0 to 1, with 1 being most sensitive). The responsiveness parameter affects how quickly the agent responds after the user finishes speaking.
+
+Design prompts to handle interruptions gracefully:
+
+```
+## Handling Interruptions
+
+When interrupted by the user:
+- Stop speaking immediately
+- Acknowledge their input: "Of course, let me address that"
+- Pivot to their new topic without resistance
+- Never comment on being interrupted or express frustration
+```
+
+**Backchannel responses** are small acknowledgments like "uh-huh", "I see", "mhmm" that the agent interjects during user speech to improve engagement:
+
+```json
+{
+  "enable_backchannel": true,
+  "backchannel_frequency": 0.8,
+  "backchannel_words": ["okay", "uh-huh", "mhmm", "yah"]
+}
+```
+
+Default backchannel words vary by voice provider and language. For 11labs English voices: ["okay", "uh-huh", "mhmm", "yah"]. For Spanish: ["mhm", "ajá", "si", "vale"]. For French: ["mhm", "oui"]. For Japanese: ["はい"]. For Portuguese: ["certo", "sim", "tá"]. OpenAI and Deepgram voices use similar but slightly different word sets.
+
+**Backchannel frequency** (default 0.8) controls how often backchanneling triggers when the engine determines it would be appropriate. Setting to 0 disables it completely, while 1 triggers whenever possible. Certain voices don't work well with certain words, so test before production deployment.
+
+Benefits include acknowledgment that reassures the speaker their message is being received, encouragement prompting the speaker to continue, maintaining conversational rhythm by reducing awkward pauses, and building trust through active listening cues. Users interacting with backchanneling agents show significantly higher engagement levels in production deployments.
+
+## Error handling and fallback patterns
+
+Error handling requires both prompt-level patterns and system-level configurations. For unclear user input, use clarifying questions:
+
+```
+## Handling Unclear Input
+
+If the user provides unclear input (e.g., "I need help"):
+- Ask clarifying questions: "Could you specify what kind of help you need—billing, technical support, or something else?"
+- Offer specific options rather than open-ended questions
+- Use positive reinforcement: "Great! That's exactly the info I needed."
+
+## When User Intent is Uncertain
+If uncertain about user meaning:
+1. Ask follow-up questions to double-check
+2. Rephrase what you understood: "Just to confirm, you're asking about [X], correct?"
+3. Offer 2-3 specific options: "Are you looking for [A], [B], or [C]?"
+```
+
+Tool call error handling patterns:
+
+```
+## Tool Usage Error Handling
+
+When calling schedule_meeting:
+1. If meeting time is unavailable, suggest alternatives:
+   "That slot is booked. Would {{alternative_times}} work for you?"
+2. If required information missing:
+   "I need a few more details. Could you provide {{missing_field}}?"
+3. If API returns error:
+   "I'm having trouble accessing the system right now. Let me transfer you to someone who can help."
+```
+
+System-level fallback configurations provide automatic resilience:
+
+```json
+{
+  "voice_id": "11labs-Adrian",
+  "fallback_voice_ids": ["openai-Alloy", "deepgram-Angus"]
+}
+```
+
+If the primary voice provider fails, Retell automatically routes to backup providers. Similarly, if OpenAI is unavailable, requests route to Azure-hosted equivalents automatically without manual intervention.
+
+Certain errors automatically retry twice with exponential backoff: connection errors (network issues), 408 Request Timeout, 409 Conflict, 429 Rate Limit, and 5xx Internal errors. The SDK provides structured error handling:
+
+```python
+import retell
+from retell import Retell
+
+client = Retell()
+
+try:
+    client.agent.create(
+        response_engine={
+            "llm_id": "llm_234sdertfsdsfsdf",
+            "type": "retell-llm",
+        },
+        voice_id="11labs-Adrian",
+    )
+except retell.APIConnectionError as e:
+    print("The server could not be reached")
+    print(e.__cause__)
+except retell.RateLimitError as e:
+    print("A 429 status code was received; we should back off a bit.")
+except retell.APIStatusError as e:
+    print("Another non-200-range status code was received")
+    print(e.status_code)
+    print(e.response)
+```
+
+Timeout and silence handling use reminder settings:
+
+```json
+{
+  "reminder_trigger_ms": 10000,
+  "reminder_max_count": 2
+}
+```
+
+Prompt patterns for silence management:
+
+```
+## Handling User Silence
+
+After {{reminder_trigger_ms}} of silence:
+1. First reminder: "Are you still there? Take your time, I'm here to help."
+2. Second reminder: "I haven't heard from you. Would you like me to wait, or should we reconnect later?"
+3. After {{reminder_max_count}} reminders: "I'll go ahead and end the call now. Feel free to call back anytime. Goodbye!"
+```
+
+For handling out-of-scope requests:
+
+```
+## Scope Boundaries
+
+When user requests something outside your capabilities:
+- Be honest: "I specialize in {{your_domain}}, but I can't help with {{out_of_scope_request}}."
+- Offer alternatives: "What I can do is {{available_alternative}}."
+- Transfer if appropriate: "Let me connect you with someone who can assist with that."
+- Never apologize excessively - be confident about your role
+```
+
+## Pronunciation and special formatting requirements
+
+Retell.ai requires explicit pronunciation guides for consistent output quality. Phone numbers use specific formatting:
+
+```
+## Phone Number Pronunciation
+
+When people ask about your phone number, your phone number is 4158923245
+
+When speaking the phone number, transform the format as follows:
+- Input formats like 4158923245, (415) 892-3245, or 415-892-3245
+- Should be pronounced as: "four one five - eight nine two - three two four five"
+- Important: Don't omit the space around the dash when speaking
+```
+
+Email addresses spell out each character:
+
+```
+## Email Address Pronunciation
+
+The possible email format is name@company.com
+To spell out an email address: n-a-m-e-@-c-o-m-p-a-n-y-dot-com
+@ is pronounced as "at"
+```
+
+Website URLs require careful handling:
+
+```
+## Website URL Pronunciation
+
+Whenever you encounter a website URL, please:
+1. Identify each segment of the domain name
+2. If a segment consists of individual letters (e.g., "NK"), pronounce each letter using its spoken form in English (e.g., "N" → "en," "K" → "kay")
+3. If a segment is a recognizable word (e.g., "laundry"), pronounce it normally as that word
+4. Pronounce "dot" before stating the top-level domain (e.g., "dot com," "dot net," "dot org")
+
+Examples:
+- "nklaundry.com" → "en-kay-laundry dot com"
+- "abctest.net" → "A B C test dot net"
+- "xyzco.org" → "ex-why-zee-co dot org"
+```
+
+Times and dates follow spoken patterns:
+
+```
+## Time and Date Pronunciation
+
+For State Numbers, Times & Dates:
+- For 1:00 PM, say "One PM."
+- For 3:30 PM, say "Three thirty PM."
+- For 8:45 AM, say "Eight forty-five AM."
+- Never say O'clock, Instead just say O-Clock.
+- Always say "AM" or "PM".
+```
+
+The **NO_RESPONSE_NEEDED** sequence is a hardcoded stop sequence that halts response generation immediately:
+
+```
+## Handling Hold Situations
+
+If you are put on hold or the user says they need a moment, output: NO_RESPONSE_NEEDED
+
+This prevents the agent from speaking during inappropriate moments.
+```
+
+Use pronunciation dictionaries for brand-specific terms:
+
+```json
+{
+  "pronunciation_dictionary": [
+    {
+      "word": "Retell",
+      "alphabet": "ipa",
+      "phoneme": "riːˈtɛl"
+    }
+  ]
+}
+```
+
+Boosted keywords improve speech recognition accuracy for specific terms:
+
+```json
+{
+  "boosted_keywords": ["Retell", "Kroger", "specialized_term"]
+}
+```
+
+## Production deployment considerations
+
+Before production deployment, configure agent settings for optimal performance:
+
+```json
+{
+  "agent_name": "Customer Support Agent",
+  "response_engine": {
+    "type": "retell-llm",
+    "llm_id": "llm_234sdertfsdsfsdf"
+  },
+  "voice_id": "11labs-Adrian",
+  "voice_model": "eleven_turbo_v2",
+  "voice_temperature": 1,
+  "responsiveness": 1,
+  "interruption_sensitivity": 1,
+  "enable_backchannel": true,
+  "backchannel_frequency": 0.8,
+  "backchannel_words": ["yeah", "uh-huh", "mm-hmm"],
+  "reminder_trigger_ms": 10000,
+  "reminder_max_count": 1,
+  "ambient_sound": "coffee-shop",
+  "language": "en-US",
+  "webhook_url": "https://example.com/webhook",
+  "boosted_keywords": ["Retell", "AI"],
+  "enable_transcription_formatting": true,
+  "opt_out_sensitive_data_storage": false,
+  "normalize_for_speech": true,
+  "end_call_after_silence_ms": 600000
+}
+```
+
+**Voice temperature** (0-2, default 1) controls voice expression variance - use lower values for consistent professional tone, higher for more expressive variation. **Responsiveness** (0-1) controls response speed - higher values mean faster agent responses but might feel rushed. **Ambient sound** options like "coffee-shop" add realistic background noise improving perceived naturalness.
+
+Security and compliance settings:
+
+```json
+{
+  "data_storage_setting": "everything_except_pii",
+  "opt_in_signed_url": true
+}
+```
+
+Data storage options include "everything" (store all data including transcripts, recordings, logs), "everything_except_pii" (automatically redact detected PII), and "basic_attributes_only" (store only basic attributes with no transcripts, recordings, or logs). Retell is SOC 2 Type 1 & 2 certified, HIPAA compliant for healthcare applications, and GDPR compliant for European data protection.
+
+Testing workflow using LLM Playground:
+1. Test LLM without speaking to verify conversation logic
+2. Create, store, and edit test conversations
+3. For multi-state agents, change starting point to middle state and test from there
+4. Verify tool calling accuracy and response quality
+5. Check edge case handling
+
+Post-call analytics track success rates, latency metrics (LLM and websocket roundtrip times), user sentiment analysis, task completion status, and call transcript review. Set up webhooks for real-time notifications on call_started, call_ended, and call_analyzed events.
+
+Performance targets based on Retell.ai standards: response latency under 1 second (achieves ~800ms), uptime 99.99% with automatic failover, first call resolution 90%+ for in-scope inquiries, and continuous sentiment tracking. Monitor failed calls weekly, refine prompts monthly based on patterns, and conduct quarterly A/B testing on prompt variations.
+
+## Key implementation patterns and best practices
+
+**State design principles**: Each state should handle one logical segment with clear transitions explicitly mentioned in prompts. Limit edges to avoid confusing the LLM with too many transition options. Group related steps in the same state rather than fragmenting across multiple states unnecessarily.
+
+**Prompt engineering essentials**: Structure prompts using sections (Identity, Style Guardrails, Response Guidelines, Task, Rebuttals) for better LLM comprehension. Write tasks as numbered step-by-step procedures. Add "Wait for user response" after questions to prevent the agent from rushing through the conversation. Be explicit about conditions for transitions and tool calls.
+
+**Dynamic variable best practices**: Always use string types for all values. Set default values at the agent level as fallbacks. Design prompts that work gracefully both with and without variables set. Test both scenarios thoroughly. Use conditional logic for optional variables in conversation flow nodes.
+
+**Tool integration patterns**: Place tools only in relevant states rather than making all tools globally available. Put common tools like end_call in general_tools for universal access. Use custom function responses to extract and save variables for later use. Set lower temperature (0-0.3) for improved tool calling consistency.
+
+The most common mistake is creating overly complex single-prompt agents when the scenario requires multi-state architecture. When prompt length exceeds 500 words or you have 3+ decision branches or 5+ tools, transition to multi-prompt or conversation flow agents. This architectural decision significantly reduces hallucination rates and improves maintainability.
+
+For interruption handling, design prompts assuming users will interrupt frequently - this matches real human conversation patterns. Keep agent responses under 2 sentences when possible to provide natural interruption points. Never have the agent comment on being interrupted or show frustration.
+
+Error recovery requires both prevention and handling. Use conversation flow for complex scenarios requiring predictable outcomes, implement knowledge base integration for grounded responses, and create explicit fallback paths for when the agent is uncertain. The prompt should state: "If uncertain about answer, say: 'I don't have that specific information, but I can transfer you to someone who does.'" rather than allowing the LLM to generate potentially incorrect information.
+
+Context preservation across conversation states uses edge parameters to carry forward critical information. When transitioning from information_collection to appointment_booking, pass user_name, email, and reason_for_visit through the edge parameters so the next state has full context without requiring the user to repeat information. This dramatically improves user experience and reduces conversation length.
+
+Testing every state individually in the LLM Playground before connecting them ensures each component works correctly in isolation. This modular testing approach catches issues early and makes debugging significantly easier than testing the entire conversation flow at once. For multi-state agents, you can set the starting state to any point in the flow to test specific scenarios without going through the entire conversation each time.

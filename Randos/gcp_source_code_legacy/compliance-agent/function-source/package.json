@@ -1,0 +1,19 @@
+{
+  "name": "intelligence-agent",
+  "version": "1.0.0",
+  "description": "A Cloud Function to process transcripts and generate summaries using Vertex AI.",
+  "main": "index.js",
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.0.0",
+    "@google-cloud/storage": "^7.0.0",
+    "@google-cloud/pubsub": "^4.0.0",
+    "@google-cloud/vertexai": "^0.1.0",
+    "axios": "^1.6.0",
+    "cloudevents": "^1.0.0",
+    "nodemailer": "^6.9.7",
+    "googleapis": "^128.0.0"
+  },
+  "scripts": {
+    "start": "functions-framework --target=intelligenceAgent --signature-type=cloudevent"
+  }
+}

@@ -1,0 +1,18 @@
+# AI MARKETER JAR - Dependencies
+
+# Core MCP Server
+mcp>=0.1.0
+
+# Database
+sqlite3
+
+# Encryption for L3 Memory
+cryptography>=41.0.0
+
+# Marketing Platform SDKs
+twilio>=8.0.0
+google-ads>=22.0.0
+requests>=2.31.0
+
+# Utilities
+python-dotenv>=1.0.0

@@ -1,0 +1,16 @@
+{
+  "scriptId": "1vW6wjU7H8JMWn8dg14K2J4RLR8tQ3s1UxJQRX2Ug2IPAv_ovPilzX63q",
+  "rootDir": "ForgeMCPServer",
+  "scriptExtensions": [
+    ".js",
+    ".gs"
+  ],
+  "htmlExtensions": [
+    ".html"
+  ],
+  "jsonExtensions": [
+    ".json"
+  ],
+  "filePushOrder": [],
+  "skipSubdirectories": false
+}

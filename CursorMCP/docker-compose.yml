@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  cursormcp:
+    build: .
+    container_name: cursormcp
+    stdin_open: true
+    tty: true
+    environment:
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+      - CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID}
+      - WORKSPACE_ROOT=${WORKSPACE_ROOT:-/workspace}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - MCP_SERVER_NAME=${MCP_SERVER_NAME:-cursormcp}
+      - MCP_SERVER_VERSION=${MCP_SERVER_VERSION:-0.1.0}
+    volumes:
+      # Read-write mount for file operations (write_file tool needs this)
+      # Security: Path validation in _validate_path() ensures we stay within workspace
+      - ${WORKSPACE_ROOT:-./workspace}:/workspace:rw
+    # MCP servers communicate via stdio, so we keep it simple
+    # No ports needed - Cursor connects via stdio
+

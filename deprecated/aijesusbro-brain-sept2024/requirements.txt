@@ -1,0 +1,22 @@
+# Core dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-dotenv==1.0.0
+
+# PostgreSQL
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+
+# HTTP clients for platform APIs
+httpx==0.25.2
+aiohttp==3.9.1
+
+# Logging and monitoring
+python-json-logger==2.0.7
+
+# Optional: For AI operations
+openai==1.6.1
+anthropic==0.8.1
+
+# Redis for caching (optional)
+redis==5.0.1

@@ -1,0 +1,195 @@
+
+const { Storage } = require('@google-cloud/storage');
+const { PubSub } = require('@google-cloud/pubsub');
+const { VertexAI } = require('@google-cloud/vertexai');
+const { google } = require('googleapis');
+
+console.log('Intelligence Agent: Full process.env:', JSON.stringify(process.env, null, 2));
+
+const storage = new Storage();
+const pubsub = new PubSub();
+
+const transcriptBucketName = 'omnicall-464316-transcripts';
+const summariesDriveFolderId = '1WL12UP7pO9tFjcFw57YDgfCC-XQ98GuE'; // Updated by agent
+
+exports.intelligenceAgent = async (cloudEvent) => {
+  console.log('Intelligence Agent: Received raw CloudEvent:', JSON.stringify(cloudEvent, null, 2));
+
+  console.log('Intelligence Agent: Function started.');
+  try {
+    // The Pub/Sub message data is base64 encoded and contains the transcriptFileName
+    const pubSubMessageData = Buffer.from(cloudEvent.data, 'base64').toString('utf8');
+    const { transcriptFileName } = JSON.parse(pubSubMessageData);
+
+    console.log(`Intelligence Agent: Processing transcript: ${transcriptFileName}`);
+
+    // Read the transcript from GCS
+    console.log(`Intelligence Agent: Reading transcript from gs://${transcriptBucketName}/${transcriptFileName}`);
+    const [transcriptContent] = await storage.bucket(transcriptBucketName).file(transcriptFileName).download();
+    const transcript = transcriptContent.toString('utf8');
+    console.log('Intelligence Agent: Transcript read successfully.');
+
+    // Initialize Vertex AI
+    console.log('Intelligence Agent: Initializing Vertex AI.');
+    const vertex_ai = new VertexAI({ project: process.env.GCP_PROJECT, location: 'us-central1', apiEndpoint: 'us-central1-aiplatform.googleapis.com' });
+    console.log('Intelligence Agent: vertex_ai object:', JSON.stringify(vertex_ai, null, 2));
+    console.log('Intelligence Agent: typeof vertex_ai.getGenerativeModel:', typeof vertex_ai.getGenerativeModel);
+    console.log('Intelligence Agent: typeof vertex_ai.preview.getGenerativeModel:', typeof vertex_ai.preview.getGenerativeModel);
+
+    const model = 'gemini-2.5-flash';
+
+    const generativeModel = vertex_ai.preview.getGenerativeModel({
+      model: model,
+      generationConfig: {
+        'maxOutputTokens': 8000,
+        'temperature': 1,
+        'topP': 0.95,
+      },
+      safetySettings: [
+        {
+          'category': 'HARM_CATEGORY_HATE_SPEECH',
+          'threshold': 'BLOCK_MEDIUM_AND_ABOVE'
+        },
+        {
+          'category': 'HARM_CATEGORY_DANGEROUS_CONTENT',
+          'threshold': 'BLOCK_MEDIUM_AND_ABOVE'
+        },
+        {
+          'category': 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+          'threshold': 'BLOCK_MEDIUM_AND_ABOVE'
+        },
+        {
+          'category': 'HARM_CATEGORY_HARASSMENT',
+          'threshold': 'BLOCK_MEDIUM_AND_ABOVE'
+        }
+      ],
+    });
+    console.log('Intelligence Agent: Vertex AI model initialized.');
+
+    console.log('Intelligence Agent: Generating summary with Vertex AI.');
+    const request = {
+      contents: [{ role: 'user', parts: [{ text: `As a Chief Operating Officer (COO) of a rapidly growing tech startup, analyze the following sales call transcript. Provide a concise summary (max 500 words) focusing on key decisions, action items, potential risks, and opportunities for process improvement or strategic advantage. Also, identify any follow-up tasks and assign them to relevant roles (e.g., Sales, Product, Engineering, Marketing). Ensure the summary is actionable and directly supports operational efficiency and growth. Transcript: ${transcript}` }] }],
+    };
+
+    console.log('Intelligence Agent: Request to Vertex AI:', JSON.stringify(request, null, 2));
+    const result = await generativeModel.generateContent(request);
+    console.log('Intelligence Agent: Result from Vertex AI:', JSON.stringify(result, null, 2));
+    const summary = result.response.candidates[0].content.parts[0].text;
+    console.log('Intelligence Agent: Summary generated.');
+
+    // Save the summary to Google Drive as a Google Doc
+    console.log('Intelligence Agent: Authenticating for Google Drive/Docs/Gmail.');
+    const auth = new google.auth.GoogleAuth({
+      scopes: ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/documents', 'https://www.googleapis.com/auth/gmail.send'],
+    });
+    const authClient = await auth.getClient();
+    google.options({ auth: authClient });
+    console.log('Intelligence Agent: GoogleAuth client obtained.');
+    console.log('Intelligence Agent: AuthClient scopes:', authClient.credentials.scopes);
+    console.log('Intelligence Agent: AuthClient client_email:', authClient.credentials.client_email);
+    console.log('Intelligence Agent: Full AuthClient object:', JSON.stringify(authClient, null, 2));
+
+    const drive = google.drive({ version: 'v3', auth: authClient });
+    const docs = google.docs({ version: 'v1', auth: authClient });
+
+    let targetFolderId = summariesDriveFolderId;
+
+    // Verify or create the Google Drive folder
+    try {
+      console.log(`Intelligence Agent: Checking Google Drive folder: ${targetFolderId}`);
+      const folderResponse = await drive.files.get({
+        fileId: targetFolderId,
+        fields: 'id,name,mimeType',
+      });
+
+      if (folderResponse.data.mimeType !== 'application/vnd.google-apps.folder') {
+        console.log(`Intelligence Agent: Provided ID ${targetFolderId} is not a folder. Creating a new one.`);
+        throw new Error('Not a folder'); // Force creation of new folder
+      }
+      console.log(`Intelligence Agent: Google Drive folder "${folderResponse.data.name}" (${targetFolderId}) exists.`);
+    } catch (folderError) {
+      console.error(`Intelligence Agent: Error checking folder ${targetFolderId}:`, folderError.message);
+      console.log('Intelligence Agent: Creating new Google Drive folder "OmniCall Summaries".');
+      const createFolderResponse = await drive.files.create({
+        resource: {
+          name: 'OmniCall Summaries',
+          mimeType: 'application/vnd.google-apps.folder',
+        },
+        fields: 'id',
+      });
+      targetFolderId = createFolderResponse.data.id;
+      console.log(`Intelligence Agent: New Google Drive folder created with ID: ${targetFolderId}`);
+
+      // Update the hardcoded summariesDriveFolderId in the function's code
+      // This part cannot be done by the function itself, it needs to be done by me (the agent)
+      // after the function runs and logs the new ID.
+      // For now, I will log a message indicating that the hardcoded ID needs to be updated.
+      console.log(`Intelligence Agent: IMPORTANT: Please update the 'summariesDriveFolderId' constant in intelligence-agent/index.js to: '${targetFolderId}'`);
+    }
+
+    const docTitle = `${transcriptFileName.replace('.txt', '')} - Sales Call Summary`;
+    console.log(`Intelligence Agent: Creating Google Doc with title: ${docTitle}`);
+    const createDocResponse = await docs.documents.create({
+      requestBody: {
+        title: docTitle,
+      },
+    });
+    const documentId = createDocResponse.data.documentId;
+    console.log(`Intelligence Agent: Google Doc created with ID: ${documentId}`);
+
+    console.log('Intelligence Agent: Updating Google Doc content.');
+    await docs.documents.batchUpdate({
+      documentId: documentId,
+      requestBody: {
+        requests: [{
+          insertText: {
+            text: summary,
+            location: {
+              index: 1,
+            },
+          },
+        }],
+      },
+    });
+    console.log('Intelligence Agent: Google Doc content updated.');
+
+    console.log(`Intelligence Agent: Moving Google Doc to folder ID: ${targetFolderId}`);
+    await drive.files.update({
+      fileId: documentId,
+      addParents: targetFolderId,
+      removeParents: 'root',
+      fields: 'id,parents',
+    });
+
+    console.log(`Intelligence Agent: Summary saved to Google Drive: ${docTitle} (ID: ${documentId})`);
+
+    // Send the summary via email
+    console.log('Intelligence Agent: Sending summary email.');
+    const gmail = google.gmail({ version: 'v1', auth: authClient });
+    const emailContent = [
+      `To: kruze@aijesusbro.com`,
+      `Subject: Sales Call Summary: ${docTitle}`,
+      `Content-Type: text/html; charset=utf-8`,
+      `\n`,
+      `<h1>Sales Call Summary</h1>`,
+      `<p>${summary.replace(/\n/g, '<br>')}</p>`,
+      `<p>Google Doc Link: <a href="https://docs.google.com/document/d/${documentId}/edit">${docTitle}</a></p>`,
+    ].join('\n');
+
+    const encodedEmail = Buffer.from(emailContent).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/\=/g, '');
+
+    await gmail.users.messages.send({
+      userId: 'kruze@aijesusbro.com',
+      requestBody: {
+        raw: encodedEmail,
+      },
+    });
+
+    console.log(`Intelligence Agent: Summary email sent to kruze@aijesusbro.com`);
+  } catch (err) {
+    console.error('Intelligence Agent ERROR:', err.message);
+    if (err.response) {
+      console.error('Intelligence Agent ERROR Response Data:', JSON.stringify(err.response.data, null, 2));
+    }
+  }
+};

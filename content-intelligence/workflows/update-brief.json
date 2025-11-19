@@ -1,0 +1,49 @@
+{
+  "name": "update-brief",
+  "description": "Regenerate reports when new info arrives",
+  "steps": [
+    {
+      "name": "get_topic_data",
+      "type": "worker",
+      "config": {
+        "worker": "content-api",
+        "action": "get_topic_full_data",
+        "data": {
+          "topic_id": "{{topic_id}}"
+        }
+      }
+    },
+    {
+      "name": "regenerate_report",
+      "type": "http",
+      "config": {
+        "url": "https://content-synthesizer.aijesusbro-brain.workers.dev",
+        "method": "POST",
+        "body": {
+          "topic": "{{get_topic_data.topic}}",
+          "insights": "{{get_topic_data.insights}}",
+          "sources": "{{get_topic_data.sources}}",
+          "knowledge_graph": "{{get_topic_data.knowledge_graph}}"
+        }
+      }
+    },
+    {
+      "name": "store_updated_report",
+      "type": "worker",
+      "config": {
+        "worker": "content-api",
+        "action": "update_report",
+        "data": {
+          "topic_id": "{{topic_id}}",
+          "report": "{{regenerate_report.report}}"
+        }
+      }
+    }
+  ],
+  "trigger": {
+    "type": "event",
+    "event": "new_sources_added"
+  }
+}
+
+

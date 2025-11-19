@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Exit - AI Outreach CRM</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #1a1a1a;
+      --bg-tertiary: #2a2a2a;
+      --border: #333;
+      --text-primary: #fff;
+      --text-secondary: #aaa;
+      --text-tertiary: #666;
+      --accent: #0066ff;
+      --accent-hover: #0052cc;
+      --success: #00d66f;
+      --warning: #ffaa00;
+      --error: #ff4444;
+      --nav-width: 240px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Layout */
+    .app-container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Side Navigation */
+    .sidebar {
+      width: var(--nav-width);
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      padding: 24px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .logo span {
+      color: var(--accent);
+    }
+
+    .nav-items {
+      flex: 1;
+      padding: 20px 0;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .nav-item:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: var(--bg-tertiary);
+      color: var(--accent);
+      border-right: 2px solid var(--accent);
+    }
+
+    .nav-icon {
+      font-size: 18px;
+      width: 20px;
+      text-align: center;
+    }
+
+    .sidebar-footer {
+      padding: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .user-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .user-name {
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-email {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      margin-left: var(--nav-width);
+      min-height: 100vh;
+    }
+
+    .page-header {
+      padding: 32px 40px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .page-title {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .page-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .page-content {
+      padding: 40px;
+    }
+
+    /* Buttons */
+    .btn {
+      background: var(--accent);
+      color: var(--text-primary);
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: #333;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .btn-small {
+      padding: 8px 16px;
+      font-size: 13px;
+    }
+
+    .btn-large {
+      padding: 16px 32px;
+      font-size: 16px;
+    }
+
+    /* Forms */
+    .form-container {
+      max-width: 800px;
+    }
+
+    .form-section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 32px;
+      margin-bottom: 24px;
+    }
+
+    .form-section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .form-section-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .form-label-required::after {
+      content: '*';
+      color: var(--error);
+      margin-left: 4px;
+    }
+
+    .form-help {
+      display: block;
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    .form-input,
+    .form-textarea,
+    .form-select {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus,
+    .form-textarea:focus,
+    .form-select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .form-textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Cards */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 24px;
+    }
+
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .card-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .badge-success { background: rgba(0, 214, 111, 0.1); color: var(--success); border: 1px solid var(--success); }
+    .badge-warning { background: rgba(255, 170, 0, 0.1); color: var(--warning); border: 1px solid var(--warning); }
+    .badge-error { background: rgba(255, 68, 68, 0.1); color: var(--error); border: 1px solid var(--error); }
+    .badge-info { background: rgba(0, 102, 255, 0.1); color: var(--accent); border: 1px solid var(--accent); }
+    .badge-draft { background: rgba(102, 102, 102, 0.1); color: var(--text-tertiary); border: 1px solid var(--text-tertiary); }
+
+    /* Empty States */
+    .empty-state {
+      text-align: center;
+      padding: 80px 40px;
+    }
+
+    .empty-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+      opacity: 0.3;
+    }
+
+    .empty-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .empty-text {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Loading States */
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+
+    .spinner {
+      border: 3px solid var(--bg-tertiary);
+      border-top: 3px solid var(--accent);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Utility */
+    .hidden {
+      display: none !important;
+    }
+
+    .text-error {
+      color: var(--error);
+    }
+
+    .text-success {
+      color: var(--success);
+    }
+
+    /* Toast Notifications */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .toast {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px 20px;
+      min-width: 300px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .toast-success {
+      border-left: 3px solid var(--success);
+    }
+
+    .toast-error {
+      border-left: 3px solid var(--error);
+    }
+
+    .toast-info {
+      border-left: 3px solid var(--accent);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 60px;
+      }
+
+      .main-content {
+        margin-left: 60px;
+      }
+
+      .nav-item span:not(.nav-icon) {
+        display: none;
+      }
+
+      .sidebar-footer {
+        padding: 12px;
+      }
+
+      .user-details,
+      .logo span:last-child {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">The <span>Exit</span></div>
+      </div>
+
+      <div class="nav-items">
+        <a class="nav-item" data-page="dashboard">
+          <span class="nav-icon">📊</span>
+          <span>Dashboard</span>
+        </a>
+        <a class="nav-item active" data-page="campaigns">
+          <span class="nav-icon">📢</span>
+          <span>Campaigns</span>
+        </a>
+        <a class="nav-item" data-page="opportunities">
+          <span class="nav-icon">💼</span>
+          <span>Opportunities</span>
+        </a>
+        <a class="nav-item" data-page="calendar">
+          <span class="nav-icon">📅</span>
+          <span>Calendar</span>
+        </a>
+        <a class="nav-item" data-page="leads">
+          <span class="nav-icon">👥</span>
+          <span>Leads</span>
+        </a>
+        <a class="nav-item" data-page="settings">
+          <span class="nav-icon">⚙️</span>
+          <span>Settings</span>
+        </a>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar" id="userAvatar">U</div>
+          <div class="user-details">
+            <div class="user-name" id="userName">Loading...</div>
+            <div class="user-email" id="userEmail">...</div>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-small" onclick="logout()" style="width: 100%;">Logout</button>
+      </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="main-content" id="mainContent">
+      <!-- Content will be injected here based on selected nav item -->
+    </main>
+  </div>
+
+  <script>
+    // Detect if we're on custom domain with /crm prefix
+    const isCustomDomain = window.location.pathname.startsWith('/crm');
+    const API_URL = isCustomDomain
+      ? window.location.origin + '/crm'
+      : window.location.origin;
+
+    let token = localStorage.getItem('token');
+    let accountId = localStorage.getItem('accountId');
+    let currentPage = 'campaigns';
+    let campaigns = [];
+
+    // Check auth
+    if (!token || !accountId) {
+      window.location.href = isCustomDomain ? '/crm' : '/';
+    }
+
+    // Initialize
+    initNavigation();
+    loadUserInfo();
+    navigateToPage('campaigns');
+
+    // Navigation
+    function initNavigation() {
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          e.preventDefault();
+          const page = item.getAttribute('data-page');
+          navigateToPage(page);
+        });
+      });
+    }
+
+    function navigateToPage(page) {
+      currentPage = page;
+
+      // Update active nav item
+      document.querySelectorAll('.nav-item').forEach(item => {
+        if (item.getAttribute('data-page') === page) {
+          item.classList.add('active');
+        } else {
+          item.classList.remove('active');
+        }
+      });
+
+      // Render page content
+      switch(page) {
+        case 'dashboard':
+          renderDashboard();
+          break;
+        case 'campaigns':
+          renderCampaignsPage();
+          break;
+        case 'opportunities':
+          renderPlaceholder('Opportunities', 'Track deals and pipeline stages', '💼');
+          break;
+        case 'calendar':
+          renderPlaceholder('Calendar', 'Schedule and manage appointments', '📅');
+          break;
+        case 'leads':
+          renderPlaceholder('Leads', 'Manage your lead database', '👥');
+          break;
+        case 'settings':
+          renderPlaceholder('Settings', 'Configure your account and integrations', '⚙️');
+          break;
+      }
+    }
+
+    // User Info
+    async function loadUserInfo() {
+      try {
+        const response = await fetch(`${API_URL}/api/accounts/${accountId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+
+        document.getElementById('userName').textContent = data.name;
+        document.getElementById('userEmail').textContent = data.email;
+        document.getElementById('userAvatar').textContent = data.name.substring(0, 1).toUpperCase();
+      } catch (err) {
+        console.error('Error loading user info:', err);
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('accountId');
+      window.location.href = isCustomDomain ? '/crm' : '/';
+    }
+
+    // Toast Notifications
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+
+      document.getElementById('toastContainer').appendChild(toast);
+
+      setTimeout(() => {
+        toast.remove();
+      }, 4000);
+    }
+
+    // Placeholder Page
+    function renderPlaceholder(title, description, icon) {
+      document.getElementById('mainContent').innerHTML = `
+        <div class="page-header">
+          <h1 class="page-title">${title}</h1>
+          <p class="page-subtitle">${description}</p>
+        </div>
+        <div class="page-content">
+          <div class="empty-state">
+            <div class="empty-icon">${icon}</div>
+            <div class="empty-title">Coming Soon</div>
+            <div class="empty-text">This feature is under development and will be available soon.</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Dashboard Page
+    function renderDashboard() {
+      document.getElementById('mainContent').innerHTML = `
+        <div class="page-header">
+          <h1 class="page-title">Dashboard</h1>
+          <p class="page-subtitle">Overview of your outreach campaigns</p>
+        </div>
+        <div class="page-content">
+          <div class="empty-state">
+            <div class="empty-icon">📊</div>
+            <div class="empty-title">Dashboard Coming Soon</div>
+            <div class="empty-text">We're building analytics and insights for your campaigns.</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Campaigns Page (next in the code)
+    async function renderCampaignsPage() {
+      document.getElementById('mainContent').innerHTML = `
+        <div class="page-header">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <h1 class="page-title">Campaigns</h1>
+              <p class="page-subtitle">Manage your autonomous outreach campaigns</p>
+            </div>
+            <button class="btn" onclick="showCreateCampaignPage()">
+              <span>+</span> New Campaign
+            </button>
+          </div>
+        </div>
+        <div class="page-content">
+          <div class="loading">
+            <div class="spinner"></div>
+            <div>Loading campaigns...</div>
+          </div>
+        </div>
+      `;
+
+      await loadCampaigns();
+    }
+
+    async function loadCampaigns() {
+      try {
+        const response = await fetch(`${API_URL}/api/campaigns`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        campaigns = (await response.json()).campaigns;
+
+        if (campaigns.length === 0) {
+          document.querySelector('.page-content').innerHTML = `
+            <div class="empty-state">
+              <div class="empty-icon">📭</div>
+              <div class="empty-title">No campaigns yet</div>
+              <div class="empty-text">Create your first autonomous outreach campaign to get started with AI-powered lead generation.</div>
+              <button class="btn btn-large" onclick="showCreateCampaignPage()">
+                <span>+</span> Create Your First Campaign
+              </button>
+            </div>
+          `;
+          return;
+        }
+
+        // Load stats for campaigns
+        const campaignsWithStats = await Promise.all(
+          campaigns.map(async (c) => {
+            const statsRes = await fetch(`${API_URL}/api/campaigns/${c.id}/stats`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            return { ...c, stats: await statsRes.json() };
+          })
+        );
+
+        renderCampaignCards(campaignsWithStats);
+      } catch (err) {
+        console.error('Error loading campaigns:', err);
+        showToast('Failed to load campaigns', 'error');
+      }
+    }
+
+    function renderCampaignCards(campaigns) {
+      document.querySelector('.page-content').innerHTML = `
+        <div class="cards-grid">
+          ${campaigns.map(c => {
+            const stats = c.stats.leads;
+            const progress = stats.total > 0 ? (stats.contacted / stats.total) * 100 : 0;
+            const replyRate = (stats.reply_rate * 100).toFixed(1);
+
+            return `
+              <div class="card" onclick="showCampaignDetail('${c.id}')">
+                <div class="card-header">
+                  <div>
+                    <div class="card-title">${c.name}</div>
+                    <div class="card-subtitle">
+                      ${c.stats.activity.agents_active ? '🟢 Agents Active' : '⚪ Idle'}
+                    </div>
+                  </div>
+                  <span class="badge badge-${c.status}">${c.status}</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px;">
+                  <div style="text-align: center;">
+                    <div style="font-size: 24px; font-weight: 700;">${stats.total}</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Leads</div>
+                  </div>
+                  <div style="text-align: center;">
+                    <div style="font-size: 24px; font-weight: 700;">${stats.contacted}</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Contacted</div>
+                  </div>
+                  <div style="text-align: center;">
+                    <div style="font-size: 24px; font-weight: 700;">${replyRate}%</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Replies</div>
+                  </div>
+                </div>
+                <div style="background: var(--bg-tertiary); height: 6px; border-radius: 3px; margin-top: 16px; overflow: hidden;">
+                  <div style="background: var(--accent); height: 100%; width: ${progress}%; transition: width 0.3s;"></div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    // Create Campaign Page
+    function showCreateCampaignPage() {
+      document.getElementById('mainContent').innerHTML = `
+        <div class="page-header">
+          <h1 class="page-title">Create New Campaign</h1>
+          <p class="page-subtitle">Set up your autonomous outreach campaign</p>
+        </div>
+        <div class="page-content">
+          <form class="form-container" onsubmit="createCampaign(event)">
+            <div class="form-section">
+              <h2 class="form-section-title">Campaign Details</h2>
+              <p class="form-section-subtitle">Basic information about your outreach campaign</p>
+
+              <div class="form-group">
+                <label class="form-label form-label-required">Campaign Name</label>
+                <input type="text" class="form-input" id="campaignName" placeholder="e.g., AI Startup Outreach Q1 2025" required>
+                <span class="form-help">Give your campaign a descriptive name</span>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <h2 class="form-section-title">Sender Information</h2>
+              <p class="form-section-subtitle">Who the emails will be from</p>
+
+              <div class="form-group">
+                <label class="form-label form-label-required">Your Company Name</label>
+                <input type="text" class="form-input" id="companyName" placeholder="e.g., The Exit" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label form-label-required">Sender Name</label>
+                <input type="text" class="form-input" id="senderName" placeholder="e.g., Alex Morgan" required>
+                <span class="form-help">The name that will appear in the "From" field</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label form-label-required">Sender Email</label>
+                <input type="email" class="form-input" id="senderEmail" placeholder="e.g., alex@yourdomain.com" required>
+                <span class="form-help">Make sure this email is set up to send messages</span>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <h2 class="form-section-title">Messaging</h2>
+              <p class="form-section-subtitle">What value are you offering?</p>
+
+              <div class="form-group">
+                <label class="form-label form-label-required">Value Proposition</label>
+                <textarea class="form-textarea" id="valueProposition" placeholder="e.g., We help B2B SaaS companies close more deals with AI-powered outreach that learns and adapts" required></textarea>
+                <span class="form-help">Describe the main benefit you provide to customers</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Key Differentiators</label>
+                <textarea class="form-textarea" id="differentiators" placeholder="e.g., Fully autonomous, learns what works, adapts in real-time, runs on edge"></textarea>
+                <span class="form-help">What makes you different from competitors? (optional)</span>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost" onclick="navigateToPage('campaigns')">Cancel</button>
+              <button type="submit" class="btn">Create Campaign</button>
+            </div>
+          </form>
+        </div>
+      `;
+    }
+
+    async function createCampaign(event) {
+      event.preventDefault();
+
+      const data = {
+        name: document.getElementById('campaignName').value,
+        config: {
+          company_name: document.getElementById('companyName').value,
+          sender_name: document.getElementById('senderName').value,
+          sender_email: document.getElementById('senderEmail').value,
+          value_proposition: document.getElementById('valueProposition').value,
+          differentiators: document.getElementById('differentiators').value
+        }
+      };
+
+      try {
+        const response = await fetch(`${API_URL}/api/campaigns`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+
+        if (!response.ok) throw new Error('Failed to create campaign');
+
+        showToast('Campaign created successfully!', 'success');
+        navigateToPage('campaigns');
+      } catch (err) {
+        console.error('Error creating campaign:', err);
+        showToast('Failed to create campaign', 'error');
+      }
+    }
+
+    function showCampaignDetail(campaignId) {
+      showToast('Campaign detail view coming soon!', 'info');
+      // TODO: Implement campaign detail page
+    }
+  </script>
+</body>
+</html>

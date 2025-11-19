@@ -1,0 +1,57 @@
+{
+  "name": "continuous-monitor",
+  "description": "Daily check for new content on tracked topics",
+  "steps": [
+    {
+      "name": "get_tracked_topics",
+      "type": "worker",
+      "config": {
+        "worker": "content-api",
+        "action": "get_monitoring_topics"
+      }
+    },
+    {
+      "name": "check_new_content",
+      "type": "http",
+      "config": {
+        "url": "https://content-search.aijesusbro-brain.workers.dev",
+        "method": "POST",
+        "body": {
+          "topic": "{{get_tracked_topics.topic}}",
+          "max_results": 10
+        },
+        "for_each": "get_tracked_topics.topics"
+      }
+    },
+    {
+      "name": "process_new_sources",
+      "type": "http",
+      "config": {
+        "url": "https://content-fetcher.aijesusbro-brain.workers.dev",
+        "method": "POST",
+        "body": {
+          "source": "{{check_new_content.source}}"
+        },
+        "for_each": "check_new_content.new_sources"
+      }
+    },
+    {
+      "name": "update_research",
+      "type": "worker",
+      "config": {
+        "worker": "content-api",
+        "action": "add_new_sources",
+        "data": {
+          "topic_id": "{{get_tracked_topics.topic_id}}",
+          "sources": "{{process_new_sources.results}}"
+        }
+      }
+    }
+  ],
+  "trigger": {
+    "type": "scheduled",
+    "schedule": "0 9 * * *"
+  }
+}
+
+

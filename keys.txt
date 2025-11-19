@@ -1,0 +1,145 @@
+AI Jesus Bro - Twilio
+API Key: SK451b658e7397ec5ad179ae1686ab5caf
+API Secret: Z2lG0aDvABPaX7jE4eZ1xdvYU0tpQaOA
+Account SID: ACd7564cf277675642888a72f63d1655a3
+Auth Token: e65397c32f16f83469ee9d859308eb6a
+SIP Trunk SID: TKb65f30405f7e86ce20e4c23ace137c43
+SIP Domain: aijesusbro-retell-55a3.sip.twilio.com
+Phone Numbers:
+  - (323) 968-5736 (+13239685736) → RevOps OS Agent via SIP TRUNK ✅
+    Agent: agent_589dbbbf5c860b1336bade6684
+    LLM: llm_ccbc353b3b7340be2be926d64dfe
+    Method: SIP (aijesusbro-retell-55a3.sip.twilio.com)
+    Status: Active in Retell dashboard
+  - (725) 502-1112 (+17255021112) → Old agent (webhook)
+  - (866) 965-8975 (+18669658975) → Old agent (webhook)
+
+GHL API - AI Jesus Bro & Advisory 9
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6IlBNZ2JRMzc1VEVHT3lHWHNLejdlIiwidmVyc2lvbiI6MSwiaWF0IjoxNzU3NDU2NTUwMTIyLCJzdWIiOiJ5OXFxZjNIV0FYVGk5Nk1wZXVqZiJ9.nbuFjgIZ1hnsHLPDj5IsiUlxR5DgecMw1l56LCEZEjo
+
+Location ID
+PMgbQ375TEGOyGXsKz7e
+
+
+Digital Ocean
+API Token: dop_v1_d6b57ed13fcf3d16324a3682ab6012cd1c9ff1281d4ba7e63ad86d3a13bf2cab
+Droplet ID: 520881582
+Droplet IP: 64.23.221.37
+SSH Key Path: ~/.ssh/aijesusbro_do
+Root Password: TheForge2025
+
+ClearVC 
+GHL API eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6IjlJd1BVWG5PRVo0ckZ5elRObVBTIiwidmVyc2lvbiI6MSwiaWF0IjoxNzQyODU0MDg3Mzg3LCJzdWIiOiJNbVdxQ3loRXpFbWIySExnOW9TUSJ9.ASDvF_XVn3jp1CZveqKCEhvz7iFRivpN-FVIYbebeQ0
+
+Location ID: 9IwPUXnOEZ4rFyzTNmPS
+
+Twilio:
+Account SID: AC663ffc90f6db4857fd619f14aee837a6
+Auth Token: d43bf45e97fc953d5732057c908a5e7f
+API:
+SID: SK3e2c93d7bd1c1c9cd16be352a965e61f
+SECRET: Ppfpdu9TJzyraCwWXcjF28SWJUilppxW
+
+Advisory9
+Twilio
+Account SID: AC1cdcdebf30374db9cfc6552075048786
+Auth token: c83566a6678ee0c31760c73a92d6c5bc
+API: SKe8490cbad4d236d0d7340ccd7799fbe9
+Secret: p3p0HPHS3mmHjBBVih1bmwBQAfEazkNe
+
+Cloudeflare API:
+gWbANxar1WFWh-GTi2IhtcdUBmmw2Cb47KIz9Q1n
+Xpand
+
+Global:
+8e50875413a00f75698e2d5f7b47f6bfe506a
+
+Anthropic:
+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
+
+# === VAPI MIGRATION COMPLETED ===
+Vapi API Key: bb0d907c-0834-420e-932c-f3f25f8221ad
+Dashboard: https://dashboard.vapi.ai
+
+Status: Brain MCP running with Vapi tools (13 tools available)
+Phone to migrate: (323) 968-5736 → Currently on Retell, moving to Vapi
+
+# === VEGAS LINE CONFIGURED ===
+Number: (725) 502-1112 (+17255021112)
+Vapi Phone ID: 78ef0eb3-edfc-4a53-938d-cdda0c7df07c
+Vapi Assistant ID: e070f577-b04c-49ab-ad1e-adf069094bd9
+Assistant Name: Vegas Vibe Test Agent
+Twilio SID: PNf20e218e51daeeaddf61ceccdf1b043a
+Status: LIVE - Ready to test! 📞
+
+Configuration:
+- Twilio → Vapi webhook ✅
+- Assistant → Phone number ✅
+- Voice: 11Labs (energetic female)
+- Model: GPT-4
+- Transcriber: Deepgram nova-2
+
+TEST NOW: Call (725) 502-1112
+
+# === WEBHOOK FIX APPLIED ===
+Correct Vapi Webhooks for Twilio:
+Voice: https://api.vapi.ai/twilio/inbound_call (POST)
+SMS: https://api.vapi.ai/twilio/sms (POST)
+
+Both numbers now configured correctly:
+- (323) 968-5736 → LA Spectrum OS assistant
+- (725) 502-1112 → Vegas Vibe Test Agent
+
+Status: BOTH READY TO TEST ✅
+
+Personalemail Railway:
+e2b95fb3-364c-4fef-8fd2-abc75f7bf28a
+
+# === MEDTAINER (John's Brain Node) ===
+Owner: medtaynor (John)
+Deployed: Oct 2025 (voice-to-text → multi-agent orchestration)
+Status: ✅ LIVE - Sub-server in organizational network
+
+DigitalOcean API Key: dop_v1_e51f560d3fcdbfea2273059609cf63f86cef71118358d7afa996b0464e5fdd2f
+
+Server Details:
+- IP: 24.199.118.227
+- URL (HTTP): http://24.199.118.227:8000
+- URL (HTTPS): https://medtainer.aijesusbro.com ✅ LIVE
+- SSH: root@24.199.118.227
+- SSH Password: MedT@iner2024!Secure
+
+Cloudflare Tunnel:
+- Tunnel ID: edbfc982-d5e1-47ee-bf8f-7ffa65cec842
+- Tunnel Name: medtainer
+- Status: ✅ HEALTHY (4 active connections to CF edge)
+- CNAME Target: edbfc982-d5e1-47ee-bf8f-7ffa65cec842.cfargotunnel.com
+- DNS Record: ✅ ACTIVE - Resolves via 104.26.0.83, 104.26.1.83, 172.67.72.244
+- Deployed: 2025-11-16
+
+MCP Tools (26 total):
+- GoHighLevel: 13 tools (Central Nervous System with AI insights)
+- GoDaddy: 8 tools (Domain & DNS management)
+- DigitalOcean: 5 tools (Droplet lifecycle)
+
+Health Check: http://24.199.118.227:8000/health
+Server Name: MedTainer MCP Server
+Environment: production
+
+Integration: Quad + multiple systems
+Architecture: Similar to Spectrum (PostgreSQL + FastAPI + Docker)
+
+OAuth Credentials (for Claude Desktop):
+- Client ID: claude-desktop
+- Client Secret: nJHBiE_YwKXFis48s1LZKOA4VJASpn1A5O8rcVUnVA8
+- Redirect URI: https://claude.ai/api/mcp/auth_callback
+
+MCP API Key (for direct access):
+- API Key: y4lEXubCO9-0Fjs4kVFg4A-NIseySW9piTerGBoNw_A
+- Header: X-API-Key
+
+Deployment Notes:
+- Cloudflared installed and running as service
+- Tunnel connected to Cloudflare edge (sjc05)
+- Port 8000 currently open (recommend closing after DNS works)
+- See: medtainer_tunnel_setup.md for full details

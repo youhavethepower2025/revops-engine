@@ -1,0 +1,24 @@
+{
+  "name": "jobhunt-ai",
+  "version": "0.1.0",
+  "description": "MCP-native autonomous revenue operations platform",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "dev:mcp": "wrangler dev --config wrangler.mcp.toml --env dev",
+    "deploy:dev": "wrangler deploy --env dev",
+    "deploy:mcp:dev": "wrangler deploy --config wrangler.mcp.toml --env dev",
+    "deploy:staging": "wrangler deploy --env staging",
+    "deploy:production": "wrangler deploy --env production",
+    "db:init": "wrangler d1 execute jobhunt-ai-db --file=./schema/schema.sql",
+    "db:init:dev": "wrangler d1 execute jobhunt-ai-db-dev --env dev --file=./schema/schema.sql",
+    "db:query": "wrangler d1 execute jobhunt-ai-db --command",
+    "db:query:dev": "wrangler d1 execute jobhunt-ai-db-dev --env dev --command"
+  },
+  "dependencies": {
+    "hono": "^4.9.10"
+  },
+  "devDependencies": {
+    "wrangler": "^3.114.14"
+  }
+}

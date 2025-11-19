@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Exit - Event Viewer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0a0a;
+      color: #e0e0e0;
+      padding: 20px;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #fff;
+      font-weight: 600;
+    }
+    .auth-section {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+      color: #aaa;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      background: #0a0a0a;
+      border: 1px solid #333;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 14px;
+    }
+    button {
+      background: #0066ff;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    button:hover { background: #0052cc; }
+    .status {
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+    .status.success { background: #1a3a1a; border: 1px solid #2d5a2d; color: #7dff7d; }
+    .status.error { background: #3a1a1a; border: 1px solid #5a2d2d; color: #ff7d7d; }
+    .events-container {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .event {
+      background: #0a0a0a;
+      border: 1px solid #2a2a2a;
+      border-radius: 4px;
+      padding: 15px;
+      margin-bottom: 10px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+    }
+    .event-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    .event-type {
+      color: #00d4ff;
+      font-weight: 600;
+    }
+    .event-time {
+      color: #888;
+      font-size: 11px;
+    }
+    .event-body {
+      color: #aaa;
+      line-height: 1.6;
+    }
+    .trace-id {
+      color: #ff00ff;
+      font-size: 11px;
+      margin-top: 5px;
+    }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>The Exit - Event Viewer</h1>
+
+    <!-- Auth Section -->
+    <div id="authSection" class="auth-section">
+      <h2 style="font-size: 16px; margin-bottom: 15px;">Authentication</h2>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="name" placeholder="Your name">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="email@example.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="password">
+      </div>
+      <button onclick="createAccount()">Create Account</button>
+      <button onclick="login()">Login</button>
+    </div>
+
+    <div id="status" class="status hidden"></div>
+
+    <!-- Events Section -->
+    <div id="eventsSection" class="hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 style="font-size: 18px; color: #fff;">Live Events</h2>
+        <button onclick="loadEvents()">Refresh</button>
+      </div>
+      <div id="events" class="events-container">
+        <div style="color: #666; text-align: center; padding: 40px;">
+          No events yet. Create an account or login to see events.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Detect if we're on custom domain with /crm prefix
+    const isCustomDomain = window.location.pathname.startsWith('/crm');
+    const API_URL = isCustomDomain
+      ? window.location.origin + '/crm'
+      : window.location.origin;
+
+    let token = localStorage.getItem('token');
+    let accountId = localStorage.getItem('accountId');
+
+    // If already logged in, go straight to dashboard
+    if (token && accountId) {
+      window.location.href = isCustomDomain ? '/crm/dashboard' : '/dashboard';
+    }
+
+    function showStatus(message, isError = false) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = 'status ' + (isError ? 'error' : 'success');
+      status.classList.remove('hidden');
+      setTimeout(() => status.classList.add('hidden'), 5000);
+    }
+
+    async function createAccount() {
+      const name = document.getElementById('name').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      if (!name || !email || !password) {
+        showStatus('Please fill in all fields', true);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/api/accounts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          showStatus(data.error || 'Failed to create account', true);
+          return;
+        }
+
+        token = data.token;
+        accountId = data.account_id;
+        localStorage.setItem('token', token);
+        localStorage.setItem('accountId', accountId);
+
+        showStatus('Account created successfully! Redirecting to dashboard...');
+        // Redirect to dashboard instead of event viewer
+        setTimeout(() => {
+          window.location.href = isCustomDomain ? '/crm/dashboard' : '/dashboard';
+        }, 1000);
+      } catch (err) {
+        showStatus('Network error: ' + err.message, true);
+      }
+    }
+
+    async function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) {
+        showStatus('Please enter email and password', true);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/api/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          showStatus(data.error || 'Login failed', true);
+          return;
+        }
+
+        token = data.token;
+        accountId = data.account_id;
+        localStorage.setItem('token', token);
+        localStorage.setItem('accountId', accountId);
+
+        showStatus('Logged in successfully! Redirecting to dashboard...');
+        // Redirect to dashboard instead of event viewer
+        setTimeout(() => {
+          window.location.href = isCustomDomain ? '/crm/dashboard' : '/dashboard';
+        }, 1000);
+      } catch (err) {
+        showStatus('Network error: ' + err.message, true);
+      }
+    }
+
+    async function loadEvents() {
+      if (!token) return;
+
+      try {
+        const response = await fetch(`${API_URL}/api/events?limit=50`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          showStatus('Failed to load events', true);
+          return;
+        }
+
+        const data = await response.json();
+        renderEvents(data.events);
+      } catch (err) {
+        showStatus('Network error: ' + err.message, true);
+      }
+    }
+
+    function renderEvents(events) {
+      const container = document.getElementById('events');
+
+      if (events.length === 0) {
+        container.innerHTML = '<div style="color: #666; text-align: center; padding: 40px;">No events yet.</div>';
+        return;
+      }
+
+      container.innerHTML = events.map(event => `
+        <div class="event">
+          <div class="event-header">
+            <span class="event-type">${event.event_type}</span>
+            <span class="event-time">${new Date(event.timestamp).toLocaleString()}</span>
+          </div>
+          <div class="event-body">
+            ${event.entity_type ? `<div>Entity: ${event.entity_type}/${event.entity_id}</div>` : ''}
+            <div>Payload: ${JSON.stringify(event.payload, null, 2)}</div>
+            <div class="trace-id">Trace: ${event.trace_id}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Auto-refresh every 5 seconds
+    setInterval(() => {
+      if (token && !document.getElementById('eventsSection').classList.contains('hidden')) {
+        loadEvents();
+      }
+    }, 5000);
+  </script>
+</body>
+</html>

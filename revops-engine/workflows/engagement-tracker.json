@@ -1,0 +1,61 @@
+{
+  "name": "engagement-tracker",
+  "description": "Monitor → Update → Trigger followups",
+  "steps": [
+    {
+      "name": "check_engagement",
+      "type": "http",
+      "config": {
+        "url": "https://revops-tracker.aijesusbro-brain.workers.dev",
+        "method": "GET",
+        "params": {
+          "campaign_id": "{{campaign_id}}"
+        }
+      }
+    },
+    {
+      "name": "update_interactions",
+      "type": "worker",
+      "config": {
+        "worker": "revops-api",
+        "action": "update_interactions",
+        "data": "{{check_engagement.stats}}"
+      }
+    },
+    {
+      "name": "identify_followups",
+      "type": "worker",
+      "config": {
+        "worker": "revops-api",
+        "action": "find_followup_candidates",
+        "data": {
+          "campaign_id": "{{campaign_id}}",
+          "min_engagement": 1
+        }
+      }
+    },
+    {
+      "name": "trigger_followups",
+      "type": "http",
+      "config": {
+        "url": "https://revops-writer.aijesusbro-brain.workers.dev",
+        "method": "POST",
+        "body": {
+          "prospect": "{{identify_followups.prospect}}",
+          "research_notes": "{{identify_followups.research_notes}}",
+          "campaign_context": {
+            "name": "Follow-up",
+            "previous_message": "{{identify_followups.previous_message}}"
+          }
+        },
+        "for_each": "identify_followups.candidates"
+      }
+    }
+  ],
+  "trigger": {
+    "type": "scheduled",
+    "schedule": "0 */6 * * *"
+  }
+}
+
+

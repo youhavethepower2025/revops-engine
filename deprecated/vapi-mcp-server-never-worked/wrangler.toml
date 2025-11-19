@@ -1,0 +1,27 @@
+name = "vapi-mcp-server"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 database for call transcripts and client configs
+[[d1_databases]]
+binding = "DB"
+database_name = "vapi-calls-db"
+database_id = "ed6526ff-6bb7-40e4-a0ba-d3e1535054e7"
+
+# Durable Objects for per-client brain instances
+[[durable_objects.bindings]]
+name = "VAPI_BRAIN"
+class_name = "VapiBrain"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["VapiBrain"]
+
+# Environment variables
+[vars]
+ENVIRONMENT = "production"
+SERVICE_NAME = "vapi-mcp-server"
+
+# Secrets (set via: wrangler secret put SECRET_NAME)
+# VAPI_API_KEY - Your VAPI API key from dashboard

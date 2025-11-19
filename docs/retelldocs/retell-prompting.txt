@@ -1,0 +1,142 @@
+Retell AI Voice Agents: Prompt Engineering, MCP & Integrations
+
+Retell AI provides a flexible no-code platform for building AI phone agents. Effective prompt design is crucial: well-structured prompts (or conversation nodes) guide the agent’s behavior, tool use, and personalization. Retell’s recent updates have added powerful features – notably an MCP (Multi-step Call Planning) Node for calling external APIs, and expanded dynamic variable support – to enable advanced flows. Below we survey best practices and recent developments for:
+	•	Prompting techniques (simple vs complex workflows)
+	•	Multi-step Call Planning (MCP) for advanced interactions
+	•	Tool integration (custom functions, APIs, webhooks) and how to invoke them
+	•	Dynamic variables (data syntax) for referencing user-specific data
+
+Each section includes examples and Retell’s official guidance.
+
+1. Structured Prompting Techniques
+
+Retell agents use either a single comprehensive prompt, a multi-prompt tree, or a conversation flow of nodes. For simple workflows, a single well-crafted prompt suffices. For complex logic, Retell recommends a multi-prompt or conversation flow architecture.
+	•	Sectional Prompts (Single/Multi-Prompt Agents). Break prompts into sections (often demarcated by headings) for clarity and maintainability. For example, a recommended structure is:
+
+## Identity  
+You are a friendly AI assistant for [Company]. Your role is [specific purpose]...
+
+## Style Guardrails  
+Be concise: Keep responses under 2 sentences unless explaining complex topics.  
+Be conversational: Use natural language, contractions, and acknowledge the caller's input.  
+Be empathetic: Show understanding for the caller's situation.  
+
+## Response Guidelines  
+Return dates in spoken form (e.g. “January fifteenth”).  
+Ask one question at a time. Confirm understanding by paraphrasing.  
+
+## Task Instructions  
+[Specific step-by-step instructions for the task]
+
+## Objection Handling  
+If the caller is confused or hesitant: “I understand this may be new…”.  
+
+(Example adapted from Retell’s Prompt Guide ￼ ￼.)
+
+	•	When to Use Single vs Multi/Flow. Single-prompt agents (one large prompt) are easy to start with and work well for linear tasks or prototypes. Retell notes they are best for “simple, straightforward conversations” with 1–3 functions ￼. However, for complex tasks, multi-prompt (stateful tree) or visual Conversation Flows are recommended. Retell’s guidelines advise switching to a Conversation Flow when you have more than 3–4 decision branches or 5+ tools/functions (i.e. complex branching, state tracking, or reliability issues) ￼ ￼. In those cases, each node in the flow can focus on one action, making behavior deterministic.
+Example: A lead-qualification agent can be built as a two-state multi-prompt flow:
+	•	State 1: Gather and qualify lead info (no booking tools).
+	•	State 2: Book appointment (booking tools enabled, with context from State 1) ￼ ￼.
+This ensures “predictable behavior” and “tools available only when appropriate” ￼.
+	•	Explicit Tool-Call Instructions. When using single/multi-prompt agents, embed clear triggers in the prompt text for calling tools or functions. Retell advises explicitly telling the LLM when and which function to call, using the exact tool names. For example:
+
+## Tool Usage Instructions
+1. Gather initial info about the customer’s issue.  
+2. Determine request type:
+   - If customer says “refund” or “money back”: **→ Call function `transfer_to_support` immediately.**  
+   - If customer asks about order status: **→ Call function `check_order_status(order_id)`**.  
+3. After retrieving info, summarize and ask if further help is needed.  
+   - If yes, loop or call next tool as appropriate.
+
+(Example adapted from Retell’s prompt guide ￼.)
+The key is to use trigger phrases (e.g. “please call function X”) and clearly list conditions. This avoids the LLM guessing when to use a tool. In conversation flows, Retell handles tool calls via node configuration, but for prompt-based agents you must include such explicit instructions ￼ ￼.
+
+2. Multi-step Call Planning (MCP) for Advanced Flows
+
+Retell’s MCP (Multi-step Call Planning) Node lets an agent call external HTTP APIs or “MCP servers” mid-call. Introduced in mid-2025 ￼, it unlocks advanced integrations. With the MCP Node, a voice agent can “call any HTTP-based service (Zapier, custom APIs, CRMs), trigger workflows and fetch live data in real time, and dynamically adapt the conversation based on structured responses” ￼.
+	•	Setting Up an MCP Node. In a Conversation Flow, add an MCP Node and configure:
+	1.	MCP Server: Connect to your external MCP server (authenticate/URL).
+	2.	Request Headers/Params (optional): Add any static or dynamic headers/query params Retell should include.
+	3.	Tool Selection: Choose the specific MCP “tool” (function) you want to call.
+	4.	Response Variables: Map fields from the JSON response to Retell dynamic variables for later use. For example, if the API returns { "user": {"name": "John Doe", "age": 26} }, you can extract "John Doe" into a variable {{user_name}} ￼ ￼.
+	5.	Prompt Instructions (Optional): It’s best to note in your prompt when to invoke the MCP tool. E.g.:
+“When the user states their account number, please call the verify_user tool.” ￼.
+The above steps come from Retell’s docs for adding an MCP Node ￼ ￼. (Retell also provides a separate MCP configuration for single/multi-prompt agents via the function-calling interface, but the idea is similar.)
+	•	Using MCP in Conversation. Once configured, the agent will hit the MCP API during the call. The returned data can steer the flow. For instance, a verification API might return a user’s profile, then the agent says, “Thanks, {{user_name}}. I see you purchased {{purchase_item}} last week.” Retell ensures calls to the MCP are secure (scoped credentials, timeouts). The conversation can continue based on the API’s structured response ￼.
+	•	Benefits and Examples: MCP Nodes enable complex logic without hard-coding. For example, you could call a CRM API to fetch a customer’s last order and then say:
+“I see your last order (Order #{{order_id}}) was on {{order_date}}. Would you like to reorder this product?”
+This uses an MCP call under the hood and dynamic variables in the prompt. Recent changelogs highlight MCP Node as a key new feature for Retell agents ￼.
+
+3. API/Webhook Tool Integrations
+
+In addition to MCP, Retell supports custom functions (webhook calls) for single/multi-prompt agents. These allow your agent to execute arbitrary REST APIs mid-conversation. Recent updates have made this seamless:
+	•	Defining Custom Functions. In the Retell dashboard under “Tools”, you can add a Custom Function: give it a name (e.g. get_user_details), set the HTTP method (GET/POST/etc) and URL endpoint. You can specify headers or query params (which may use dynamic variables). For POST/PUT/PATCH, you define a JSON schema for input parameters (so the LLM knows how to format the call) ￼.
+	•	Response Mapping. After the API call, configure “response variables” to pull data from the JSON response. For example, if your API returns:
+
+{
+  "user": { "name": "John Doe", "membership": "Gold" },
+  "orders": [ ... ]
+}
+
+you could extract John Doe into {{user_name}} and “Gold” into {{user_membership}} for later use ￼. Retell’s docs explicitly show setting response vars from an API response ￼.
+
+	•	Agent Speech Settings. You can control whether the agent speaks while waiting for the API (useful for quick actions vs long tasks) and whether it should continue talking after the function returns. For example, enable “Speak after execution” to let the agent announce the results automatically (e.g., “Your account is verified. Your balance is $X.”).
+	•	Prompt Instructions for Function Calls. As with MCP, you must cue the LLM to call your custom function. Example from Retell docs:
+“When the user provides the city name, please get the weather for that city by calling the get_weather function.” ￼.
+This explicit instruction in the prompt ensures the agent knows exactly when and how to invoke the function ￼.
+	•	Security – Signature Verification. By default, Retell sends an X-Retell-Signature header with each request. Your webhook should verify this signature to ensure calls are authentic (Retell provides code examples for this). While not strictly part of prompt engineering, it’s a new best practice to secure your function endpoints (documentation and changelogs mention request signing).
+	•	Built-in Tools. In addition to custom HTTP calls, Retell includes ready-made actions (node types) like call transfer, send SMS, check calendar, IVR digit press, etc. In conversation flows these appear as node options; in prompts you reference them similarly (e.g. “call transfer_to_agent”).  The Prompt Guide’s Example 3 (above) illustrates instructing such calls ￼. Retell’s changelog notes that agents can now call any HTTP service or trigger workflows via MCP or custom functions ￼.
+
+4. Referencing User Data with Dynamic Variables
+
+Retell uses dynamic variables ({{variable_name}}) in prompts and configurations to personalize responses with customer-specific data. This lets you inject names, order IDs, dates, and other context into the conversation.
+	•	Syntax: {{}} Placeholders. Within any prompt text or node message, use double-curly braces around a variable name. Retell replaces these at runtime with values you provide. For example:
+
+"Hello {{user_name}}, thanks for calling! I see your last order ({{order_id}}) was on {{order_date}}. How can I help you today?"
+
+Here {{user_name}}, {{order_id}}, etc. will be filled with actual data for each caller. Retell’s docs give a similar example:
+“Hello {{user_name}}, I understand you’re interested in {{product_name}}. How can I help you today?” ￼.
+
+	•	Providing Variable Values. Values come from two places:
+	1.	API/Webhook Inputs: When making an outbound call via the Retell API, include dynamic variables in the retell_llm_dynamic_variables field. For example:
+
+{
+  "to_number": "+1234567890",
+  "workflow": "MyAIWorkflow",
+  "retell_llm_dynamic_variables": {
+    "user_name": "John Smith",
+    "order_id": "ABC123",
+    "support_case": "Case-456"
+  }
+}
+
+Retell will inject these values into the prompt ￼. (All values must be strings.)
+
+	2.	Inbound Call Webhook: You can also supply variables in an incoming call webhook so that {{}} are populated before the agent starts speaking.
+(Retell’s docs explicitly describe this: when creating a call, put variables in the payload ￼.)
+
+	•	System Variables. Retell automatically provides some variables without configuration. Recent updates (mid-2025) added new system vars. Key examples include:
+	•	{{current_time}} (formatted current time) and {{current_time_<timezone>}} for specific zones ￼.
+	•	Call metadata (phone mode only): {{direction}} (inbound/outbound), {{user_number}}, {{agent_number}}, {{call_type}} ￼.
+	•	Others: {{session_type}} (voice/chat), {{session_duration}}. These let your script adapt to context.
+	•	(Retell’s changelog notes adding {{current_time}}, {{call_type}}, {{direction}}, etc. as system defaults ￼.)
+Use cases: greet by name, confirm order ID, reference last purchase, route by department, etc.
+	•	Nested and Conditional Variables. You can even nest variables (e.g. {{current_time_{{customer_timezone}}}}) and write prompt logic that checks if a variable is set. For example:
+
+If {{user_name}} appears with curly braces, use a generic greeting. Otherwise, greet by name.
+
+Retell’s docs suggest writing prompts to handle missing data gracefully ￼ ￼.
+
+	•	Defaults and Testing. You can define default values for dynamic variables at the agent level (used if none provided). Retell recently added the ability to set “default dynamic variables” that fill in missing data ￼. Always test with and without each variable. The platform includes a test-call UI where you can supply test variables to simulate real calls.
+
+Example: A common pattern is greeting the caller by name using a variable:
+
+Agent: "Hello {{customer_name}}, thank you for calling ACME Corp Support. How can I assist you today?"  
+
+When the call starts, Retell replaces {{customer_name}} with the actual name from your data. This makes the agent feel personalized.
+
+Summary
+
+Prompt engineering in Retell involves clear, structured instructions and explicit tool triggers. Recent updates (Summer 2025) have greatly expanded Retell’s capabilities: the new MCP Node lets agents invoke any external HTTP service and adapt the call flow ￼, and custom function/webhook support lets agents call CRM or internal APIs. Throughout, dynamic variables ({{var}}) are the glue: they allow the agent to use caller-specific data (names, order history, case IDs, etc.) right in its dialogue ￼ ￼. By combining these features – sectional prompts, conversation flows, MCP/function nodes, and dynamic vars – developers can build advanced, personalized phone workflows on Retell AI.
+
+Sources: Official Retell documentation and changelogs on prompt design, MCP integration, function calling, and variables ￼ ￼ ￼ ￼ ￼ ￼.

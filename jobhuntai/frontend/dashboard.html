@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Exit - AI Outreach Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #1a1a1a;
+      --bg-tertiary: #2a2a2a;
+      --border: #333;
+      --text-primary: #fff;
+      --text-secondary: #aaa;
+      --text-tertiary: #666;
+      --accent: #0066ff;
+      --accent-hover: #0052cc;
+      --success: #00d66f;
+      --warning: #ffaa00;
+      --error: #ff4444;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    /* Layout */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 30px;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .logo span {
+      color: var(--accent);
+    }
+
+    .user-menu {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .user-email {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    /* Buttons */
+    .btn {
+      background: var(--accent);
+      color: var(--text-primary);
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: #333;
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 13px;
+    }
+
+    /* Campaign Grid */
+    .campaigns-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .campaigns-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .campaign-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .campaign-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .campaign-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 15px;
+    }
+
+    .campaign-name {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .campaign-status {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-active {
+      background: rgba(0, 214, 111, 0.1);
+      color: var(--success);
+      border: 1px solid var(--success);
+    }
+
+    .status-paused {
+      background: rgba(255, 170, 0, 0.1);
+      color: var(--warning);
+      border: 1px solid var(--warning);
+    }
+
+    .status-draft {
+      background: rgba(102, 102, 102, 0.1);
+      color: var(--text-tertiary);
+      border: 1px solid var(--text-tertiary);
+    }
+
+    .campaign-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .progress-bar {
+      background: var(--bg-tertiary);
+      height: 6px;
+      border-radius: 3px;
+      margin-top: 15px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      background: var(--accent);
+      height: 100%;
+      transition: width 0.3s;
+    }
+
+    /* Campaign Detail View */
+    .campaign-detail {
+      display: none;
+    }
+
+    .campaign-detail.active {
+      display: block;
+    }
+
+    .back-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .back-button:hover {
+      color: var(--text-primary);
+    }
+
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 30px;
+    }
+
+    .detail-title {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .detail-meta {
+      display: flex;
+      gap: 20px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .stat-card-value {
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .stat-card-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .stat-card-change {
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .change-positive {
+      color: var(--success);
+    }
+
+    /* Activity Feed */
+    .activity-section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .activity-feed {
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .activity-item {
+      display: flex;
+      gap: 15px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+
+    .activity-icon {
+      font-size: 20px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-tertiary);
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+
+    .activity-content {
+      flex: 1;
+    }
+
+    .activity-description {
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .activity-time {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    /* Leads Table */
+    .leads-section {
+      margin-top: 30px;
+    }
+
+    .leads-table {
+      width: 100%;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .leads-table th {
+      background: var(--bg-tertiary);
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .leads-table td {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    .leads-table tr:hover {
+      background: var(--bg-tertiary);
+      cursor: pointer;
+    }
+
+    .lead-name {
+      font-weight: 500;
+    }
+
+    .lead-company {
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    /* Loading & Empty States */
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+
+    .spinner {
+      border: 3px solid var(--bg-tertiary);
+      border-top: 3px solid var(--accent);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+      opacity: 0.3;
+    }
+
+    .empty-text {
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    /* Utility */
+    .hidden {
+      display: none !important;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .badge-success { background: rgba(0, 214, 111, 0.1); color: var(--success); }
+    .badge-warning { background: rgba(255, 170, 0, 0.1); color: var(--warning); }
+    .badge-error { background: rgba(255, 68, 68, 0.1); color: var(--error); }
+    .badge-info { background: rgba(0, 102, 255, 0.1); color: var(--accent); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--bg-tertiary);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #444;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo">The <span>Exit</span></div>
+      <div class="user-menu">
+        <span class="user-email" id="userEmail"></span>
+        <button class="btn btn-secondary btn-small" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <!-- Campaigns List View -->
+    <div id="campaignsView">
+      <div class="campaigns-header">
+        <h2 style="font-size: 28px; font-weight: 700;">Campaigns</h2>
+        <button class="btn" onclick="createCampaignModal()">+ New Campaign</button>
+      </div>
+
+      <div id="campaignsLoading" class="loading">
+        <div class="spinner"></div>
+        <div>Loading campaigns...</div>
+      </div>
+
+      <div id="campaignsEmpty" class="empty-state hidden">
+        <div class="empty-icon">📭</div>
+        <div class="empty-text">No campaigns yet. Create your first autonomous outreach campaign.</div>
+        <button class="btn" onclick="createCampaignModal()">+ Create Campaign</button>
+      </div>
+
+      <div id="campaignsGrid" class="campaigns-grid hidden"></div>
+    </div>
+
+    <!-- Campaign Detail View -->
+    <div id="campaignDetail" class="campaign-detail">
+      <div class="back-button" onclick="showCampaignsList()">
+        ← Back to Campaigns
+      </div>
+
+      <div class="detail-header">
+        <div>
+          <h1 class="detail-title" id="detailTitle"></h1>
+          <div class="detail-meta">
+            <span id="detailStatus"></span>
+            <span id="detailStarted"></span>
+          </div>
+        </div>
+        <div>
+          <button class="btn btn-secondary btn-small" id="pauseButton" onclick="pauseCampaign()">Pause</button>
+          <button class="btn btn-small" id="startButton" onclick="startCampaign()" style="display:none;">Start</button>
+        </div>
+      </div>
+
+      <div class="stats-grid" id="statsGrid">
+        <!-- Stats cards will be injected here -->
+      </div>
+
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 30px;">
+        <!-- Leads Section -->
+        <div class="leads-section">
+          <div class="section-title">
+            Leads
+            <button class="btn btn-secondary btn-small" onclick="addLeadsModal()">+ Add Leads</button>
+          </div>
+          <div id="leadsTable"></div>
+        </div>
+
+        <!-- Activity Feed -->
+        <div class="activity-section">
+          <div class="section-title">
+            Agent Activity
+            <span style="font-size: 12px; font-weight: normal; color: var(--text-tertiary);">Live</span>
+          </div>
+          <div id="activityFeed" class="activity-feed"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = window.location.origin;
+    let token = localStorage.getItem('token');
+    let accountId = localStorage.getItem('accountId');
+    let currentCampaignId = null;
+    let activityInterval = null;
+
+    // Check auth with debug info
+    if (!token || !accountId) {
+      console.error('Dashboard auth failed:', { token: !!token, accountId: !!accountId });
+      alert('Not logged in. Token: ' + (token ? 'exists' : 'missing') + ', AccountId: ' + (accountId ? 'exists' : 'missing'));
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 2000);
+    } else {
+      console.log('Dashboard auth success:', { token: token.substring(0, 10) + '...', accountId });
+    }
+
+    // Initialize
+    loadCampaigns();
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('accountId');
+      window.location.href = '/';
+    }
+
+    // Load campaigns list
+    async function loadCampaigns() {
+      try {
+        const response = await fetch(`${API_URL}/api/campaigns`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error('Failed to load campaigns');
+
+        const data = await response.json();
+
+        document.getElementById('campaignsLoading').classList.add('hidden');
+
+        if (data.campaigns.length === 0) {
+          document.getElementById('campaignsEmpty').classList.remove('hidden');
+          return;
+        }
+
+        // Load stats for each campaign
+        const campaignsWithStats = await Promise.all(
+          data.campaigns.map(async (campaign) => {
+            const statsResponse = await fetch(`${API_URL}/api/campaigns/${campaign.id}/stats`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const stats = await statsResponse.json();
+            return { ...campaign, stats };
+          })
+        );
+
+        renderCampaigns(campaignsWithStats);
+      } catch (err) {
+        console.error('Error loading campaigns:', err);
+      }
+    }
+
+    function renderCampaigns(campaigns) {
+      const grid = document.getElementById('campaignsGrid');
+      grid.classList.remove('hidden');
+
+      grid.innerHTML = campaigns.map(c => {
+        const stats = c.stats.leads;
+        const progress = stats.total > 0 ? (stats.contacted / stats.total) * 100 : 0;
+        const replyRate = stats.reply_rate * 100;
+
+        return `
+          <div class="campaign-card" onclick="showCampaignDetail('${c.id}')">
+            <div class="campaign-card-header">
+              <div>
+                <div class="campaign-name">${c.name}</div>
+                <div style="font-size: 13px; color: var(--text-tertiary);">
+                  ${c.stats.activity.agents_active ? '🟢 Agents Active' : '⚪ Idle'}
+                </div>
+              </div>
+              <span class="campaign-status status-${c.status}">${c.status}</span>
+            </div>
+
+            <div class="campaign-stats">
+              <div class="stat">
+                <div class="stat-value">${stats.total}</div>
+                <div class="stat-label">Leads</div>
+              </div>
+              <div class="stat">
+                <div class="stat-value">${stats.contacted}</div>
+                <div class="stat-label">Contacted</div>
+              </div>
+              <div class="stat">
+                <div class="stat-value">${replyRate.toFixed(1)}%</div>
+                <div class="stat-label">Reply Rate</div>
+              </div>
+            </div>
+
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: ${progress}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Show campaign detail
+    async function showCampaignDetail(campaignId) {
+      currentCampaignId = campaignId;
+
+      document.getElementById('campaignsView').classList.add('hidden');
+      document.getElementById('campaignDetail').classList.add('active');
+
+      // Load campaign data
+      await loadCampaignDetail(campaignId);
+
+      // Start polling activity feed
+      loadActivityFeed();
+      activityInterval = setInterval(loadActivityFeed, 5000);
+    }
+
+    async function loadCampaignDetail(campaignId) {
+      try {
+        // Load campaign and stats
+        const [campaignRes, statsRes, leadsRes] = await Promise.all([
+          fetch(`${API_URL}/api/campaigns/${campaignId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`${API_URL}/api/campaigns/${campaignId}/stats`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`${API_URL}/api/leads?campaign_id=${campaignId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+        ]);
+
+        const campaign = await campaignRes.json();
+        const stats = await statsRes.json();
+        const leads = await leadsRes.json();
+
+        // Update header
+        document.getElementById('detailTitle').textContent = campaign.campaign.name;
+        document.getElementById('detailStatus').innerHTML =
+          `<span class="badge badge-${campaign.campaign.status === 'active' ? 'success' : 'info'}">${campaign.campaign.status}</span>`;
+
+        if (campaign.campaign.started_at) {
+          const startedDate = new Date(campaign.campaign.started_at);
+          document.getElementById('detailStarted').textContent = `Started ${startedDate.toLocaleDateString()}`;
+        }
+
+        // Show/hide buttons
+        if (campaign.campaign.status === 'active') {
+          document.getElementById('pauseButton').style.display = 'inline-block';
+          document.getElementById('startButton').style.display = 'none';
+        } else {
+          document.getElementById('pauseButton').style.display = 'none';
+          document.getElementById('startButton').style.display = 'inline-block';
+        }
+
+        // Render stats
+        renderStats(stats);
+
+        // Render leads table
+        renderLeads(leads.leads);
+
+      } catch (err) {
+        console.error('Error loading campaign detail:', err);
+      }
+    }
+
+    function renderStats(stats) {
+      const { leads, conversations, activity } = stats;
+      const replyRate = (leads.reply_rate * 100).toFixed(1);
+      const contactRate = leads.total > 0 ? ((leads.contacted / leads.total) * 100).toFixed(1) : 0;
+
+      document.getElementById('statsGrid').innerHTML = `
+        <div class="stat-card">
+          <div class="stat-card-value">${leads.total}</div>
+          <div class="stat-card-label">Total Leads</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-value">${leads.contacted}</div>
+          <div class="stat-card-label">Contacted</div>
+          <div class="stat-card-change change-positive">${contactRate}% of total</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-value">${leads.replied}</div>
+          <div class="stat-card-label">Replies</div>
+          <div class="stat-card-change change-positive">${replyRate}% reply rate</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-value">${conversations.total}</div>
+          <div class="stat-card-label">Conversations</div>
+        </div>
+      `;
+    }
+
+    function renderLeads(leads) {
+      if (leads.length === 0) {
+        document.getElementById('leadsTable').innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">👥</div>
+            <div class="empty-text">No leads yet</div>
+          </div>
+        `;
+        return;
+      }
+
+      document.getElementById('leadsTable').innerHTML = `
+        <table class="leads-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Company</th>
+              <th>Status</th>
+              <th>Added</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${leads.map(lead => `
+              <tr onclick="showLeadDetail('${lead.id}')">
+                <td>
+                  <div class="lead-name">${lead.name}</div>
+                  <div class="lead-company">${lead.email}</div>
+                </td>
+                <td>${lead.company}</td>
+                <td><span class="badge badge-${getStatusBadge(lead.status)}">${lead.status}</span></td>
+                <td>${new Date(lead.created_at).toLocaleDateString()}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function getStatusBadge(status) {
+      const badges = {
+        'new': 'info',
+        'contacted': 'warning',
+        'replied': 'success',
+        'qualified': 'success',
+        'unqualified': 'error'
+      };
+      return badges[status] || 'info';
+    }
+
+    async function loadActivityFeed() {
+      if (!currentCampaignId) return;
+
+      try {
+        const response = await fetch(`${API_URL}/api/campaigns/${currentCampaignId}/activity?limit=20`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+        renderActivityFeed(data.activities);
+      } catch (err) {
+        console.error('Error loading activity:', err);
+      }
+    }
+
+    function renderActivityFeed(activities) {
+      const feed = document.getElementById('activityFeed');
+
+      if (activities.length === 0) {
+        feed.innerHTML = '<div class="empty-state"><div class="empty-text">No activity yet</div></div>';
+        return;
+      }
+
+      feed.innerHTML = activities.map(activity => `
+        <div class="activity-item">
+          <div class="activity-icon">${activity.icon}</div>
+          <div class="activity-content">
+            <div class="activity-description">${activity.description}</div>
+            <div class="activity-time">${timeAgo(activity.timestamp)}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function timeAgo(timestamp) {
+      const seconds = Math.floor((Date.now() - timestamp) / 1000);
+      if (seconds < 60) return 'Just now';
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes}m ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours}h ago`;
+      const days = Math.floor(hours / 24);
+      return `${days}d ago`;
+    }
+
+    function showCampaignsList() {
+      document.getElementById('campaignDetail').classList.remove('active');
+      document.getElementById('campaignsView').classList.remove('hidden');
+      currentCampaignId = null;
+
+      if (activityInterval) {
+        clearInterval(activityInterval);
+      }
+
+      loadCampaigns();
+    }
+
+    async function startCampaign() {
+      if (!currentCampaignId) return;
+
+      try {
+        await fetch(`${API_URL}/api/campaigns/${currentCampaignId}/start`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        await loadCampaignDetail(currentCampaignId);
+      } catch (err) {
+        console.error('Error starting campaign:', err);
+      }
+    }
+
+    async function pauseCampaign() {
+      if (!currentCampaignId) return;
+
+      try {
+        await fetch(`${API_URL}/api/campaigns/${currentCampaignId}/pause`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        await loadCampaignDetail(currentCampaignId);
+      } catch (err) {
+        console.error('Error pausing campaign:', err);
+      }
+    }
+
+    function showLeadDetail(leadId) {
+      console.log('Show lead detail:', leadId);
+      // TODO: Implement lead detail view
+    }
+
+    function createCampaignModal() {
+      const name = prompt('Campaign Name:', 'My Outreach Campaign');
+      if (!name) return;
+
+      const companyName = prompt('Your Company Name:', 'The Exit');
+      const senderName = prompt('Sender Name:', 'Alex Morgan');
+      const senderEmail = prompt('Sender Email:', 'alex@aijesusbro.com');
+      const valueProposition = prompt('What value do you provide?', 'We help B2B SaaS companies close more deals with AI-powered outreach');
+
+      createCampaign({
+        name,
+        config: {
+          company_name: companyName,
+          sender_name: senderName,
+          sender_email: senderEmail,
+          value_proposition: valueProposition,
+          differentiators: 'Fully autonomous, learns what works, adapts in real-time'
+        }
+      });
+    }
+
+    async function createCampaign(data) {
+      try {
+        const response = await fetch(`${API_URL}/api/campaigns`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+
+        if (!response.ok) throw new Error('Failed to create campaign');
+
+        const result = await response.json();
+        alert('Campaign created! Now add some leads.');
+
+        // Reload campaigns list
+        loadCampaigns();
+      } catch (err) {
+        alert('Error creating campaign: ' + err.message);
+      }
+    }
+
+    function addLeadsModal() {
+      if (!currentCampaignId) {
+        alert('Please select a campaign first');
+        return;
+      }
+
+      const leadsInput = prompt(
+        'Add leads (one per line, format: Name, Email, Company):\n\nExample:\nJohn Doe, john@openai.com, openai.com\nJane Smith, jane@anthropic.com, anthropic.com',
+        'John Doe, john@example.com, example.com'
+      );
+
+      if (!leadsInput) return;
+
+      const leads = leadsInput.split('\n').map(line => {
+        const [name, email, company] = line.split(',').map(s => s.trim());
+        return { name, email, company };
+      }).filter(l => l.name && l.email && l.company);
+
+      if (leads.length === 0) {
+        alert('No valid leads found');
+        return;
+      }
+
+      addLeads(leads);
+    }
+
+    async function addLeads(leads) {
+      try {
+        const response = await fetch(`${API_URL}/api/leads`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            campaign_id: currentCampaignId,
+            leads
+          })
+        });
+
+        if (!response.ok) throw new Error('Failed to add leads');
+
+        const result = await response.json();
+        alert(`Added ${result.created} leads!`);
+
+        // Reload campaign detail
+        await loadCampaignDetail(currentCampaignId);
+      } catch (err) {
+        alert('Error adding leads: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>
