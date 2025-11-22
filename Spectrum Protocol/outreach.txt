@@ -1,0 +1,1318 @@
+SPECTRUM COMMERCIAL ORGANISM: The Autonomous Revenue Engine
+Executive Integration Brief
+The Commercial Organism is not a separate system—it is a client application of the Spectrum Core Governance Fabric. Every agent (Hunter, Qualifier, Demo, Closer, Provisioner, Retention) is a SACF v2 participant that:
+
+Registers capabilities with the Universal Registry
+Consumes governance tokens for API calls
+Gets rate-limited by the Policy Engine
+Writes to the same audit log as production client agents
+
+The strategic insight: By dogfooding our own infrastructure for revenue generation, we prove that the Governance Fabric is production-grade. When we tell enterprises "Your agents run safely on Spectrum," we can truthfully say: "Our entire sales operation runs on it."
+
+1. Repository Structure Integration
+We add a single crate to the existing workspace that contains all commercial agents:
+toml# Cargo.toml (Workspace - Updated)
+[workspace]
+members = [
+    "crates/spectrum-translator",
+    "crates/spectrum-protocol",
+    "crates/spectrum-governance", 
+    "crates/spectrum-registry",
+    "crates/spectrum-server",
+    "crates/spectrum-commercial",     # NEW: The autonomous revenue engine
+]
+resolver = "2"
+
+[workspace.dependencies]
+tokio = { version = "1", features = ["full", "rt-multi-thread"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+async-trait = "0.1"
+tracing = "0.1"
+anyhow = "1.0"
+sqlx = { version = "0.7", features = ["postgres", "runtime-tokio-rustls", "uuid", "json"] }
+reqwest = { version = "0.11", features = ["json", "stream"] }
+tungstenite = "0.21"  # WebSocket for SACF v2
+playwright = "0.0.21"  # Demo Agent browser control
+stripe-rust = "0.29"
+twilio-rust = "0.5"
+```
+
+---
+
+## 2. Commercial Crate Structure
+```
+crates/spectrum-commercial/
+├── Cargo.toml
+├── src/
+│   ├── lib.rs                 # Module exports
+│   ├── types.rs               # Shared types (Lead, Deployment, etc.)
+│   ├── schema.sql             # Postgres DDL for commercial tables
+│   ├── agents/
+│   │   ├── mod.rs
+│   │   ├── hunter.rs          # Hunter Agent - discovery & scoring
+│   │   ├── qualifier.rs       # Qualifier Agent - outreach & booking
+│   │   ├── demo.rs            # Demo Agent - autonomous demo execution
+│   │   ├── closer.rs          # Closer Agent - contracts & payments
+│   │   ├── provisioner.rs     # Provisioner Agent - deployment pipeline
+│   │   └── retention.rs       # Retention Agent - upsells & referrals
+│   ├── orchestrator.rs        # Coordinator that spawns all agents
+│   └── sacf_client.rs         # SACF v2 client wrapper
+└── migrations/
+    └── 001_commercial_schema.sql
+
+3. Memory Schema (Postgres DDL)
+sql-- crates/spectrum-commercial/src/schema.sql
+
+-- ==========================================
+-- DISCOVERY & QUALIFICATION
+-- ==========================================
+
+CREATE TABLE discovered_leads (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    platform TEXT NOT NULL,              -- 'twitter', 'reddit', 'hackernews', 'discord'
+    profile_url TEXT NOT NULL,
+    profile_handle TEXT,
+    profile_bio TEXT,
+    estimated_revenue_band TEXT,         -- '<1M', '1M-5M', '5M-20M', '20M+'
+    vertical TEXT,                        -- 'professional_services', 'ecommerce', etc.
+    
+    -- Discovery metadata
+    trigger_content TEXT NOT NULL,        -- The post/comment that triggered discovery
+    trigger_phrase TEXT NOT NULL,         -- Which pattern matched
+    signal_strength INTEGER NOT NULL,     -- 1-10 score
+    pain_category TEXT,                   -- 'rate_limiting', 'consultant_failure', 'admin_hell'
+    
+    discovered_at TIMESTAMPTZ DEFAULT NOW(),
+    status TEXT DEFAULT 'new',            -- 'new', 'qualified', 'demo_booked', 'demo_completed', 'closed', 'disqualified'
+    disqualified_reason TEXT,
+    
+    UNIQUE(platform, profile_url)
+);
+
+CREATE INDEX idx_leads_status ON discovered_leads(status);
+CREATE INDEX idx_leads_signal ON discovered_leads(signal_strength DESC);
+CREATE INDEX idx_leads_discovered ON discovered_leads(discovered_at DESC);
+
+CREATE TABLE lead_activity (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id UUID REFERENCES discovered_leads(id) ON DELETE CASCADE,
+    activity_type TEXT NOT NULL,          -- 'post', 'reply', 'profile_update', 'dm_sent', 'dm_reply'
+    content TEXT,
+    signal_delta INTEGER,                 -- Change in signal strength from this activity
+    detected_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE outreach_attempts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id UUID REFERENCES discovered_leads(id) ON DELETE CASCADE,
+    platform TEXT NOT NULL,
+    message_template_id TEXT,             -- Which template was used
+    message_sent TEXT NOT NULL,
+    loom_video_url TEXT,                  -- Personalized video link
+    sent_at TIMESTAMPTZ DEFAULT NOW(),
+    response_received BOOLEAN DEFAULT FALSE,
+    response_text TEXT,
+    response_sentiment TEXT,              -- 'positive', 'negative', 'neutral' (AI-scored)
+    response_at TIMESTAMPTZ
+);
+
+-- ==========================================
+-- DEMO EXECUTION
+-- ==========================================
+
+CREATE TABLE demo_bookings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id UUID REFERENCES discovered_leads(id) ON DELETE CASCADE,
+    calendly_event_id TEXT UNIQUE,
+    scheduled_time TIMESTAMPTZ NOT NULL,
+    discovery_form_data JSONB,            -- Their answers to pre-demo questions
+    demo_sandbox_id TEXT,                 -- Which sandboxed brain instance
+    status TEXT DEFAULT 'scheduled',      -- 'scheduled', 'in_progress', 'completed', 'no_show'
+    
+    -- Demo execution tracking
+    started_at TIMESTAMPTZ,
+    ended_at TIMESTAMPTZ,
+    systems_connected JSONB,              -- ['stripe', 'gmail', 'hubspot']
+    tasks_completed JSONB,                -- [{'task': 'email_response', 'success': true, 'duration_ms': 8420}]
+    objections_raised JSONB,              -- [{'objection': 'too_expensive', 'handled': true, 'response': '...'}]
+    outcome TEXT,                         -- 'closed_positive', 'nurture', 'disqualified'
+    
+    recording_url TEXT,
+    transcript TEXT
+);
+
+CREATE TABLE demo_sandbox_instances (
+    id TEXT PRIMARY KEY,                  -- 'sandbox_<uuid>'
+    docker_container_id TEXT,
+    postgres_db_name TEXT,
+    subdomain TEXT,                       -- 'demo-abc123.spectrum.horse'
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,               -- Auto-cleanup after 24 hours
+    status TEXT DEFAULT 'provisioning'    -- 'provisioning', 'ready', 'in_use', 'terminated'
+);
+
+-- ==========================================
+-- CONTRACTS & PAYMENTS
+-- ==========================================
+
+CREATE TABLE contracts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id UUID REFERENCES discovered_leads(id) ON DELETE CASCADE,
+    tier TEXT NOT NULL,                   -- 'starter', 'professional', 'vertical_beast'
+    docusign_envelope_id TEXT,
+    contract_pdf_url TEXT,
+    sent_at TIMESTAMPTZ,
+    signed_at TIMESTAMPTZ,
+    status TEXT DEFAULT 'draft'           -- 'draft', 'sent', 'signed', 'paid'
+);
+
+CREATE TABLE payments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id UUID REFERENCES discovered_leads(id) ON DELETE CASCADE,
+    contract_id UUID REFERENCES contracts(id),
+    payment_type TEXT NOT NULL,           -- 'setup_deposit', 'setup_final', 'monthly_recurring'
+    amount_cents INTEGER NOT NULL,
+    stripe_payment_intent_id TEXT UNIQUE,
+    stripe_customer_id TEXT,
+    paid_at TIMESTAMPTZ,
+    status TEXT DEFAULT 'pending'         -- 'pending', 'succeeded', 'failed'
+);
+
+-- ==========================================
+-- CLIENT DEPLOYMENTS
+-- ==========================================
+
+CREATE TABLE client_deployments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id UUID REFERENCES discovered_leads(id) ON DELETE CASCADE,
+    company_name TEXT NOT NULL,
+    company_domain TEXT NOT NULL,
+    
+    -- Infrastructure
+    brain_subdomain TEXT UNIQUE NOT NULL, -- 'brain.clientcompany.com' or 'clientco.spectrum.cloud'
+    docker_container_id TEXT,
+    postgres_db_name TEXT,
+    cloudflare_zone_id TEXT,
+    
+    -- Deployment timeline
+    tier TEXT NOT NULL,
+    provisioned_at TIMESTAMPTZ,
+    went_live_at TIMESTAMPTZ,
+    status TEXT DEFAULT 'pending',        -- 'pending', 'provisioning', 'day_1', 'day_2'...'live'
+    
+    -- Integration credentials (encrypted)
+    integration_credentials JSONB,        -- {'stripe_oauth_token': '...', 'gmail_refresh_token': '...'}
+    
+    -- First ROI validation
+    day_8_roi_tasks JSONB,
+    day_8_validated BOOLEAN DEFAULT FALSE
+);
+
+CREATE TABLE deployment_timeline (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    deployment_id UUID REFERENCES client_deployments(id) ON DELETE CASCADE,
+    day INTEGER NOT NULL,
+    milestone TEXT NOT NULL,              -- 'infrastructure_up', 'oauth_connected', 'workflows_deployed'
+    completed BOOLEAN DEFAULT FALSE,
+    completed_at TIMESTAMPTZ,
+    notes TEXT
+);
+
+-- ==========================================
+-- RETENTION & EXPANSION
+-- ==========================================
+
+CREATE TABLE client_usage_metrics (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    deployment_id UUID REFERENCES client_deployments(id) ON DELETE CASCADE,
+    metric_date DATE NOT NULL,
+    total_tasks_executed INTEGER,
+    hours_saved_estimate DECIMAL,
+    top_workflows JSONB,                  -- [{'workflow': 'email_response', 'count': 450}]
+    unused_capabilities JSONB,            -- Features they're not using yet
+    error_rate DECIMAL,
+    calculated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    UNIQUE(deployment_id, metric_date)
+);
+
+CREATE TABLE expansion_opportunities (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    deployment_id UUID REFERENCES client_deployments(id) ON DELETE CASCADE,
+    opportunity_type TEXT NOT NULL,       -- 'add_voice_ai', 'governance_tier', 'memory_upgrade'
+    description TEXT NOT NULL,
+    estimated_value_cents INTEGER,
+    proposed_at TIMESTAMPTZ DEFAULT NOW(),
+    status TEXT DEFAULT 'identified',     -- 'identified', 'proposed', 'accepted', 'deployed'
+    closed_at TIMESTAMPTZ
+);
+
+CREATE TABLE referrals (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    referring_deployment_id UUID REFERENCES client_deployments(id) ON DELETE CASCADE,
+    referred_lead_id UUID REFERENCES discovered_leads(id),
+    referral_method TEXT,                 -- 'email', 'linkedin_intro', 'twitter_mention'
+    status TEXT DEFAULT 'intro_made',     -- 'intro_made', 'demo_booked', 'closed'
+    referral_fee_cents INTEGER,
+    paid_at TIMESTAMPTZ
+);
+
+CREATE TABLE testimonials (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    deployment_id UUID REFERENCES client_deployments(id) ON DELETE CASCADE,
+    quote TEXT NOT NULL,
+    metrics_included JSONB,               -- {'hours_saved': 160, 'tasks_automated': 15}
+    approved_for_posting BOOLEAN DEFAULT FALSE,
+    posted_to_twitter BOOLEAN DEFAULT FALSE,
+    posted_to_linkedin BOOLEAN DEFAULT FALSE,
+    posted_at TIMESTAMPTZ
+);
+
+-- ==========================================
+-- AGENT COORDINATION (SACF v2)
+-- ==========================================
+
+CREATE TABLE agent_heartbeats (
+    agent_id TEXT PRIMARY KEY,            -- 'hunter', 'qualifier', 'demo', 'closer', 'provisioner', 'retention'
+    last_heartbeat TIMESTAMPTZ DEFAULT NOW(),
+    status TEXT DEFAULT 'active',         -- 'active', 'paused', 'error'
+    current_task TEXT,
+    metadata JSONB
+);
+
+CREATE TABLE agent_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_type TEXT NOT NULL,             -- 'lead_discovered', 'demo_booked', 'payment_received', etc.
+    payload JSONB NOT NULL,
+    published_by TEXT NOT NULL,           -- Which agent published
+    published_at TIMESTAMPTZ DEFAULT NOW(),
+    consumed_by TEXT[]                    -- Which agents have processed this event
+);
+
+CREATE INDEX idx_agent_events_type ON agent_events(event_type, published_at DESC);
+
+4. Hunter Agent - The Discovery Swarm
+rust// crates/spectrum-commercial/src/agents/hunter.rs
+
+use anyhow::Result;
+use sqlx::PgPool;
+use tokio::time::{interval, Duration};
+use tracing::{info, warn};
+
+/// Trigger phrases mapped to pain categories and signal strength
+const TRIGGER_PATTERNS: &[(&str, &str, i32)] = &[
+    // (regex_pattern, pain_category, signal_strength)
+    (r"(?i)agent.*(rate limit|blocked|banned)", "rate_limiting", 9),
+    (r"(?i)spent \$\d{4,}.*(?:consultant|agency|developer).*(?:failed|doesn't work|gave up)", "consultant_failure", 10),
+    (r"(?i)(?:drowning in|buried in|overwhelmed by).*(?:admin|emails|manual work)", "admin_hell", 8),
+    (r"(?i)zapier.*(?:breaks|doesn't work|too expensive)", "zapier_inadequate", 7),
+    (r"(?i)make\.com.*(?:complicated|fails|timeout)", "make_inadequate", 7),
+    (r"(?i)langgraph.*(?:memory|state|context).*(?:problem|issue|broken)", "langchain_inadequate", 6),
+    (r"(?i)hiring.*(?:operations manager|admin assistant|coordinator)", "scaling_pain", 6),
+    (r"(?i)automation.*never works", "automation_fatigue", 8),
+    (r"(?i)our CRM is.*(?:disaster|mess|nightmare)", "crm_chaos", 7),
+];
+
+pub struct HunterAgent {
+    db: PgPool,
+    governance_token_budget: u64,  // Pays for API calls via Governance Fabric
+    sacf_client: SACFClient,
+}
+
+impl HunterAgent {
+    pub fn new(db: PgPool, sacf_client: SACFClient) -> Self {
+        Self {
+            db,
+            governance_token_budget: 1_000_000, // 1M tokens/day for monitoring
+            sacf_client,
+        }
+    }
+    
+    /// Main agent loop - spawns platform-specific monitors
+    pub async fn run(self) -> Result<()> {
+        info!("Hunter Agent initializing swarm monitors...");
+        
+        // Register with SACF v2
+        self.sacf_client.register_capability("commercial.lead_discovery", vec![
+            "Monitors social platforms for buying signals",
+            "Scores lead quality 1-10",
+            "Publishes lead_discovered events"
+        ]).await?;
+        
+        // Spawn monitors for each platform
+        tokio::spawn(self.clone().monitor_twitter());
+        tokio::spawn(self.clone().monitor_reddit());
+        tokio::spawn(self.clone().monitor_hackernews());
+        tokio::spawn(self.clone().monitor_discord());
+        
+        // Heartbeat loop
+        self.heartbeat_loop().await
+    }
+    
+    async fn monitor_twitter(self) -> Result<()> {
+        info!("Twitter monitor active");
+        
+        // Twitter API v2 streaming with filtered stream rules
+        let stream_rules = TRIGGER_PATTERNS.iter()
+            .map(|(pattern, category, _)| {
+                format!("{} lang:en -is:retweet", pattern)
+            })
+            .collect::<Vec<_>>();
+        
+        // Request token budget from Governance Fabric for Twitter API calls
+        self.sacf_client.request_tokens(10_000).await?;
+        
+        let mut twitter_stream = self.create_twitter_stream(&stream_rules).await?;
+        
+        while let Some(tweet) = twitter_stream.next().await {
+            match self.process_tweet(tweet).await {
+                Ok(Some(lead_id)) => {
+                    info!("Discovered high-signal lead: {}", lead_id);
+                    
+                    // Publish event via SACF v2
+                    self.sacf_client.publish_event("lead_discovered", json!({
+                        "lead_id": lead_id,
+                        "source": "twitter",
+                        "urgency": "high"
+                    })).await?;
+                },
+                Ok(None) => {}, // Low signal, ignored
+                Err(e) => warn!("Error processing tweet: {}", e),
+            }
+        }
+        
+        Ok(())
+    }
+    
+    async fn process_tweet(&self, tweet: Tweet) -> Result<Option<Uuid>> {
+        // Calculate signal strength
+        let (trigger_phrase, pain_category, base_signal) = self.match_trigger_patterns(&tweet.text)?;
+        
+        // Enhance signal based on profile
+        let profile_signal = self.analyze_profile(&tweet.author).await?;
+        let total_signal = base_signal + profile_signal;
+        
+        if total_signal < 6 {
+            return Ok(None); // Below threshold
+        }
+        
+        // Check if already discovered
+        if self.lead_exists(&tweet.author.username).await? {
+            // Update activity log
+            sqlx::query!(
+                "INSERT INTO lead_activity (lead_id, activity_type, content, signal_delta) 
+                 SELECT id, 'post', $1, $2 FROM discovered_leads WHERE profile_handle = $3",
+                tweet.text,
+                total_signal,
+                tweet.author.username
+            ).execute(&self.db).await?;
+            
+            return Ok(None);
+        }
+        
+        // Save new lead
+        let lead_id = sqlx::query_scalar!(
+            r#"
+            INSERT INTO discovered_leads (
+                platform, profile_url, profile_handle, profile_bio,
+                trigger_content, trigger_phrase, pain_category,
+                signal_strength, vertical, estimated_revenue_band
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            RETURNING id
+            "#,
+            "twitter",
+            format!("https://twitter.com/{}", tweet.author.username),
+            tweet.author.username,
+            tweet.author.description,
+            tweet.text,
+            trigger_phrase,
+            pain_category,
+            total_signal,
+            self.classify_vertical(&tweet.author.description),
+            self.estimate_revenue(&tweet.author)
+        ).fetch_one(&self.db).await?;
+        
+        Ok(Some(lead_id))
+    }
+    
+    fn match_trigger_patterns(&self, text: &str) -> Result<(String, String, i32)> {
+        for (pattern, category, signal) in TRIGGER_PATTERNS {
+            let re = regex::Regex::new(pattern)?;
+            if re.is_match(text) {
+                return Ok((pattern.to_string(), category.to_string(), *signal));
+            }
+        }
+        anyhow::bail!("No pattern matched")
+    }
+    
+    async fn analyze_profile(&self, author: &TwitterUser) -> Result<i32> {
+        let mut bonus = 0;
+        
+        // Founder/CEO indicators
+        let title_keywords = ["founder", "ceo", "cto", "co-founder", "owner"];
+        if title_keywords.iter().any(|k| author.description.to_lowercase().contains(k)) {
+            bonus += 2;
+        }
+        
+        // Revenue signals in bio
+        if author.description.contains("$") || author.description.contains("revenue") {
+            bonus += 2;
+        }
+        
+        // Verified account
+        if author.verified {
+            bonus += 1;
+        }
+        
+        // Follower count (social proof)
+        if author.followers_count > 1000 {
+            bonus += 1;
+        }
+        
+        Ok(bonus)
+    }
+    
+    fn classify_vertical(&self, bio: &str) -> String {
+        let verticals = [
+            ("professional_services", vec!["law", "legal", "accounting", "consulting", "advisory"]),
+            ("ecommerce", vec!["ecommerce", "shopify", "store", "retail", "merchant"]),
+            ("real_estate", vec!["real estate", "realtor", "broker", "property", "homes"]),
+            ("saas", vec!["saas", "software", "platform", "b2b", "api"]),
+            ("healthcare", vec!["dental", "medical", "healthcare", "clinic", "practice"]),
+        ];
+        
+        for (vertical, keywords) in verticals {
+            if keywords.iter().any(|k| bio.to_lowercase().contains(k)) {
+                return vertical.to_string();
+            }
+        }
+        
+        "unknown".to_string()
+    }
+    
+    fn estimate_revenue(&self, author: &TwitterUser) -> String {
+        // Heuristic revenue band estimation based on profile signals
+        let bio = author.description.to_lowercase();
+        
+        if bio.contains("$100m") || bio.contains("series c") {
+            return "20M+".to_string();
+        }
+        if bio.contains("series b") || bio.contains("$10m") {
+            return "5M-20M".to_string();
+        }
+        if bio.contains("series a") || bio.contains("$1m") {
+            return "1M-5M".to_string();
+        }
+        
+        // Default for unclear
+        "1M-5M".to_string()
+    }
+    
+    async fn monitor_reddit(self) -> Result<()> {
+        // Similar implementation for Reddit (r/entrepreneur, r/SaaS, r/smallbusiness)
+        // Uses PRAW-equivalent Rust library
+        todo!("Reddit monitor")
+    }
+    
+    async fn monitor_hackernews(self) -> Result<()> {
+        // HN Algolia API search for "Show HN" posts + "Ask HN" about automation
+        todo!("HackerNews monitor")
+    }
+    
+    async fn monitor_discord(self) -> Result<()> {
+        // Join relevant Discord servers (with permission), listen for pain signals
+        // Requires manual community building first
+        todo!("Discord monitor")
+    }
+    
+    async fn heartbeat_loop(&self) -> Result<()> {
+        let mut interval = interval(Duration::from_secs(30));
+        
+        loop {
+            interval.tick().await;
+            
+            sqlx::query!(
+                "INSERT INTO agent_heartbeats (agent_id, status, current_task) 
+                 VALUES ('hunter', 'active', 'monitoring') 
+                 ON CONFLICT (agent_id) 
+                 DO UPDATE SET last_heartbeat = NOW(), status = 'active'"
+            ).execute(&self.db).await?;
+        }
+    }
+}
+
+5. Demo Agent - The Autonomous Closer
+This is the most technically ambitious component. It runs the entire 30-minute demo hands-free using Playwright for screen control and your voice (via pre-recorded clips or real-time TTS).
+rust// crates/spectrum-commercial/src/agents/demo.rs
+
+use anyhow::Result;
+use playwright::Playwright;
+use sqlx::PgPool;
+use std::sync::Arc;
+
+pub struct DemoAgent {
+    db: PgPool,
+    sacf_client: SACFClient,
+    playwright: Arc<Playwright>,
+}
+
+impl DemoAgent {
+    pub async fn run(self) -> Result<()> {
+        info!("Demo Agent initializing...");
+        
+        // Register capability
+        self.sacf_client.register_capability("commercial.demo_execution", vec![
+            "Runs autonomous 30-minute demos",
+            "Connects to prospect's real systems live",
+            "Handles objections in real-time"
+        ]).await?;
+        
+        // Subscribe to demo_booked events
+        let mut events = self.sacf_client.subscribe("demo_booked").await?;
+        
+        while let Some(event) = events.recv().await {
+            let booking_id: Uuid = serde_json::from_value(event.payload["booking_id"].clone())?;
+            
+            tokio::spawn({
+                let agent = self.clone();
+                async move {
+                    if let Err(e) = agent.execute_demo(booking_id).await {
+                        warn!("Demo execution failed: {}", e);
+                    }
+                }
+            });
+        }
+        
+        Ok(())
+    }
+    
+    async fn execute_demo(&self, booking_id: Uuid) -> Result<()> {
+        // Fetch booking details
+        let booking = sqlx::query_as!(
+            DemoBooking,
+            "SELECT * FROM demo_bookings WHERE id = $1",
+            booking_id
+        ).fetch_one(&self.db).await?;
+        
+        let lead = sqlx::query_as!(
+            Lead,
+            "SELECT * FROM discovered_leads WHERE id = $1",
+            booking.lead_id
+        ).fetch_one(&self.db).await?;
+        
+        // Update status
+        sqlx::query!(
+            "UPDATE demo_bookings SET status = 'in_progress', started_at = NOW() WHERE id = $1",
+            booking_id
+        ).execute(&self.db).await?;
+        
+        // Spin up sandboxed brain for demo
+        let sandbox = self.provision_demo_sandbox(&lead).await?;
+        
+        // Launch Playwright browser (headless: false for screen sharing)
+        let browser = self.playwright
+            .chromium()
+            .launcher()
+            .headless(false)
+            .launch()
+            .await?;
+        
+        let context = browser.context_builder().build().await?;
+        let page = context.new_page().await?;
+        
+        // Navigate to demo environment
+        page.goto(&format!("https://{}", sandbox.subdomain)).await?;
+        
+        // Execute demo script
+        let outcome = self.run_demo_script(
+            &page,
+            &lead,
+            &booking.discovery_form_data,
+            &sandbox
+        ).await?;
+        
+        // Update booking with results
+        sqlx::query!(
+            r#"
+            UPDATE demo_bookings 
+            SET status = 'completed',
+                ended_at = NOW(),
+                outcome = $1,
+                systems_connected = $2,
+                tasks_completed = $3,
+                objections_raised = $4
+            WHERE id = $5
+            "#,
+            outcome.status,
+            serde_json::to_value(&outcome.systems_connected)?,
+            serde_json::to_value(&outcome.tasks_completed)?,
+            serde_json::to_value(&outcome.objections)?,
+            booking_id
+        ).execute(&self.db).await?;
+        
+        // Publish outcome event
+        if outcome.status == "closed_positive" {
+            self.sacf_client.publish_event("demo_closed_positive", json!({
+                "lead_id": lead.id,
+                "booking_id": booking_id
+            })).await?;
+        }
+        
+        // Cleanup sandbox (schedule termination)
+        self.schedule_sandbox_cleanup(sandbox.id).await?;
+        
+        browser.close().await?;
+        
+        Ok(())
+    }
+    
+    async fn run_demo_script(
+        &self,
+        page: &Page,
+        lead: &Lead,
+        discovery_data: &serde_json::Value,
+        sandbox: &DemoSandbox
+    ) -> Result<DemoOutcome> {
+        let mut outcome = DemoOutcome::default();
+        
+        // Section 1: Introduction (0-2 minutes)
+        self.speak_section("intro", json!({
+            "name": lead.profile_handle,
+            "pain": discovery_data["biggest_pain"]
+        })).await?;
+        
+        // Section 2: System Connection (2-8 minutes)
+        info!("Connecting to prospect's real systems...");
+        
+        // Show the Spectrum dashboard
+        page.wait_for_selector("#spectrum-dashboard").await?;
+        
+        // OAuth flow for their Stripe (if they agreed)
+        if discovery_data["allow_stripe_demo"].as_bool().unwrap_or(false) {
+            outcome.systems_connected.push("stripe".to_string());
+            
+            page.click("#connect-stripe").await?;
+            // Wait for OAuth completion (they authorize in popup)
+            page.wait_for_selector("#stripe-connected", Some(Duration::from_secs(60))).await?;
+            
+            self.speak("Stripe connected. Now I can see your real transaction data.").await?;
+        }
+        
+        // Section 3: Task 1 - Context-Aware Email (8-15 minutes)
+        self.speak_section("task_1_intro", json!({})).await?;
+        
+        // Show them a real email from their Gmail (if connected)
+        page.click("#demo-task-email-response").await?;
+        
+        // The brain executes the task
+        let task_start = std::time::Instant::now();
+        page.wait_for_selector("#task-complete").await?;
+        let task_duration_ms = task_start.elapsed().as_millis();
+        
+        outcome.tasks_completed.push(TaskResult {
+            task: "email_response".to_string(),
+            success: true,
+            duration_ms: task_duration_ms as u64
+        });
+        
+        self.speak(&format!(
+            "See that? It read the email, pulled context from your Stripe, drafted a response, and logged it. {} milliseconds.",
+            task_duration_ms
+        )).await?;
+        
+        // Section 4: Task 2 - Payment → Onboarding (15-20 minutes)
+        // Similar execution...
+        
+        // Section 5: Task 3 - Smart Follow-Up (20-25 minutes)
+        // Similar execution...
+        
+        // Section 6: ROI Conversation & Close (25-30 minutes)
+        self.speak_section("roi_pitch", json!({
+            "hours_saved_per_week": discovery_data["manual_hours_per_week"],
+            "blended_hourly_cost": 50, // Estimate
+            "breakeven_months": 4
+        })).await?;
+        
+        // Listen for objections via VAPI transcription
+        let objections = self.detect_objections_realtime(Duration::from_secs(180)).await?;
+        
+        for objection in objections {
+            let response = self.handle_objection(&objection);
+            self.speak(&response).await?;
+            outcome.objections.push(objection);
+        }
+        
+        // The close
+        self.speak("So here's what happens next if you want to move forward...").await?;
+        
+        // Wait for verbal response
+        let response = self.wait_for_response(Duration::from_secs(30)).await?;
+        
+        if response.contains_agreement() {
+            outcome.status = "closed_positive".to_string();
+            self.speak("Sick. I'll send the contract in the next 2 hours. Check your email.").await?;
+        } else if response.contains_hesitation() {
+            outcome.status = "nurture".to_string();
+        } else {
+            outcome.status = "disqualified".to_string();
+        }
+        
+        Ok(outcome)
+    }
+    
+    async fn provision_demo_sandbox(&self, lead: &Lead) -> Result<DemoSandbox> {
+        info!("Provisioning demo sandbox for lead {}", lead.id);
+        
+        // Clone template brain, create isolated Docker container
+        let sandbox_id = format!("sandbox_{}", uuid::Uuid::new_v4());
+        let subdomain = format!("demo-{}.spectrum.horse", &sandbox_id[..8]);
+        
+        // Docker API call to create isolated container
+        let container_id = self.docker.create_container(ContainerConfig {
+            image: "spectrum/brain:latest",
+            name: &sandbox_id,
+            env: vec![
+                format!("POSTGRES_DB=demo_{}", lead.id),
+                "SANDBOX_MODE=true".to_string(),
+                "AUTO_EXPIRE=24h".to_string(),
+            ],
+            // ... networking, volumes, etc.
+        }).await?;
+        
+        self.docker.start_container(&container_id).await?;
+        
+        // Create Cloudflare DNS record
+        self.cloudflare.create_dns_record(DnsRecord {
+            type_: "CNAME",
+            name: &subdomain,
+            content: "demo-lb.spectrum.horse",
+            proxied: true,
+        }).await?;
+        
+        // Save to DB
+        sqlx::query!(
+            r#"
+            INSERT INTO demo_sandbox_instances 
+            (id, docker_container_id, subdomain, expires_at, status)
+            VALUES ($1, $2, $3, NOW() + INTERVAL '24 hours', 'ready')
+            "#,
+            sandbox_id,
+            container_id,
+            subdomain
+        ).execute(&self.db).await?;
+        
+        Ok(DemoSandbox {
+            id: sandbox_id,
+            subdomain,
+            container_id,
+        })
+    }
+    
+    async fn speak(&self, text: &str) -> Result<()> {
+        // Option 1: Pre-recorded audio clips (your actual voice)
+        // Option 2: ElevenLabs TTS with your voice clone
+        // Option 3: VAPI real-time voice synthesis
+        
+        // For now, log (in production, this plays audio)
+        info!("[DEMO VOICE]: {}", text);
+        Ok(())
+    }
+    
+    fn handle_objection(&self, objection: &str) -> String {
+        // Pre-programmed responses in your voice
+        match objection {
+            "too_expensive" => "I get it - $35k feels like a lot. But what are you spending right now on manual processes? If your team's spending 40 hours a week on stuff this could handle, that's $104k/year. This pays for itself in 4 months.".to_string(),
+            "have_it_guy" => "Perfect - I'll work with them. But real talk: is your IT guy focused on keeping your systems running, or building autonomous orchestration? This isn't IT infrastructure. This is business logic.".to_string(),
+            _ => "I hear you. What's the specific concern?".to_string(),
+        }
+    }
+}
+
+6. Provisioner Agent - The 7-Day Pipeline
+rust// crates/spectrum-commercial/src/agents/provisioner.rs
+
+pub struct ProvisionerAgent {
+    db: PgPool,
+    sacf_client: SACFClient,
+    docker: DockerClient,
+    cloudflare: CloudflareClient,
+}
+
+impl ProvisionerAgent {
+    pub async fn run(self) -> Result<()> {
+        info!("Provisioner Agent initializing...");
+        
+        self.sacf_client.register_capability("commercial.deployment", vec![
+            "Provisions isolated client brain instances",
+            "Executes 7-day delivery pipeline",
+            "Manages OAuth connections and workflow deployment"
+        ]).await?;
+        
+        // Subscribe to payment_received events
+        let mut events = self.sacf_client.subscribe("payment_received").await?;
+        
+        while let Some(event) = events.recv().await {
+            let lead_id: Uuid = serde_json::from_value(event.payload["lead_id"].clone())?;
+            
+            tokio::spawn({
+                let agent = self.clone();
+                async move {
+                    if let Err(e) = agent.provision_client_brain(lead_id).await {
+                        error!("Provisioning failed: {}", e);
+                    }
+                }
+            });
+        }
+        
+        // Also run scheduled tasks for ongoing deployments
+        tokio::spawn(self.clone().run_deployment_scheduler());
+        
+        Ok(())
+    }
+    
+    async fn provision_client_brain(&self, lead_id: Uuid) -> Result<()> {
+        let lead = self.fetch_lead(lead_id).await?;
+        let contract = self.fetch_contract(lead_id).await?;
+        
+        info!("Starting provisioning for {} ({})", lead.company_name, contract.tier);
+        
+        // Create deployment record
+        let deployment_id = sqlx::query_scalar!(
+            r#"
+            INSERT INTO client_deployments 
+            (lead_id, company_name, company_domain, tier, brain_subdomain, status)
+            VALUES ($1, $2, $3, $4, $5, 'provisioning')
+            RETURNING id
+            "#,
+            lead_id,
+            lead.company_name,
+            lead.company_domain,
+            contract.tier,
+            format!("brain.{}", lead.company_domain)
+        ).fetch_one(&self.db).await?;
+        
+        // Day 0: Infrastructure setup
+        self.execute_day_0(deployment_id).await?;
+        
+        // Schedule remaining days
+        for day in 1..=7 {
+            self.schedule_milestone(deployment_id, day).await?;
+        }
+        
+        // Send kickoff email
+        self.send_kickoff_email(&lead, deployment_id).await?;
+        
+        // Publish event
+        self.sacf_client.publish_event("deployment_started", json!({
+            "deployment_id": deployment_id,
+            "lead_id": lead_id
+        })).await?;
+        
+        Ok(())
+    }
+    
+    async fn execute_day_0(&self, deployment_id: Uuid) -> Result<()> {
+        let deployment = self.fetch_deployment(deployment_id).await?;
+        
+        // 1. Create isolated Postgres database
+        let db_name = format!("brain_{}", deployment.company_domain.replace(".", "_"));
+        sqlx::query(&format!("CREATE DATABASE {}", db_name))
+            .execute(&self.db)
+            .await?;
+        
+        // 2. Clone template brain repository
+        let template_dir = tempfile::tempdir()?;
+        git2::Repository::clone(
+            "https://github.com/spectrum/brain-template",
+            template_dir.path()
+        )?;
+        
+        // 3. Build Docker image
+        let image_tag = format!("spectrum/brain:{}", deployment.company_domain);
+        self.docker.build_image(BuildImageOptions {
+            dockerfile: "Dockerfile",
+            t: &image_tag,
+            ..Default::default()
+        }, template_dir.path()).await?;
+        
+        // 4. Start container
+        let container_id = self.docker.create_container(ContainerConfig {
+            image: &image_tag,
+            env: vec![
+                format!("DATABASE_URL=postgresql://spectrum:{}@db/{}", DB_PASSWORD, db_name),
+                format!("CLIENT_NAME={}", deployment.company_name),
+                format!("TIER={}", deployment.tier),
+            ],
+            labels: hashmap! {
+                "spectrum.deployment_id" => &deployment_id.to_string(),
+                "spectrum.client" => &deployment.company_domain,
+            },
+            ..Default::default()
+        }).await?;
+        
+        self.docker.start_container(&container_id).await?;
+        
+        // 5. Provision Cloudflare subdomain
+        self.cloudflare.create_dns_record(DnsRecord {
+            type_: "A",
+            name: &deployment.brain_subdomain,
+            content: &self.server_ip,
+            proxied: true,
+        }).await?;
+        
+        // Update deployment
+        sqlx::query!(
+            "UPDATE client_deployments 
+             SET docker_container_id = $1, postgres_db_name = $2, provisioned_at = NOW()
+             WHERE id = $3",
+            container_id,
+            db_name,
+            deployment_id
+        ).execute(&self.db).await?;
+        
+        self.mark_milestone_complete(deployment_id, 0, "infrastructure_up").await?;
+        
+        Ok(())
+    }
+    
+    async fn run_deployment_scheduler(self) -> Result<()> {
+        let mut interval = tokio::time::interval(Duration::from_secs(3600)); // Check hourly
+        
+        loop {
+            interval.tick().await;
+            
+            // Find deployments with pending milestones
+            let pending = sqlx::query!(
+                r#"
+                SELECT DISTINCT d.id, d.status
+                FROM client_deployments d
+                JOIN deployment_timeline dt ON dt.deployment_id = d.id
+                WHERE dt.completed = FALSE
+                  AND d.status LIKE 'day_%'
+                "#
+            ).fetch_all(&self.db).await?;
+            
+            for deployment in pending {
+                let current_day: i32 = deployment.status
+                    .strip_prefix("day_")
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(0);
+                
+                // Execute the day's tasks
+                match current_day {
+                    1 => self.execute_day_1(deployment.id).await?,
+                    2..=3 => self.execute_day_2_3(deployment.id).await?,
+                    4 => self.execute_day_4(deployment.id).await?,
+                    5..=6 => self.execute_day_5_6(deployment.id).await?,
+                    7 => self.execute_day_7(deployment.id).await?,
+                    _ => {}
+                }
+            }
+        }
+    }
+    
+    async fn execute_day_7(&self, deployment_id: Uuid) -> Result<()> {
+        info!("Day 7: Going live for deployment {}", deployment_id);
+        
+        // Final smoke tests
+        self.run_smoke_tests(deployment_id).await?;
+        
+        // Switch to production
+        sqlx::query!(
+            "UPDATE client_deployments SET status = 'live', went_live_at = NOW() WHERE id = $1",
+            deployment_id
+        ).execute(&self.db).await?;
+        
+        // Send "You're Live" email
+        self.send_go_live_email(deployment_id).await?;
+        
+        // Charge remaining 50%
+        self.charge_final_payment(deployment_id).await?;
+        
+        // Publish event for Retention Agent
+        self.sacf_client.publish_event("client_went_live", json!({
+            "deployment_id": deployment_id
+        })).await?;
+        
+        Ok(())
+    }
+}
+
+7. Integration With Governance Fabric
+Critical insight: All commercial agents consume governance tokens just like client agents.
+rust// crates/spectrum-commercial/src/sacf_client.rs
+
+pub struct SACFClient {
+    ws_conn: WebSocketStream,
+    agent_id: String,
+    token_balance: Arc<AtomicU64>,
+}
+
+impl SACFClient {
+    /// Request tokens from Governance Fabric before making external API calls
+    pub async fn request_tokens(&self, amount: u64) -> Result<()> {
+        let request = json!({
+            "type": "token_request",
+            "agent_id": self.agent_id,
+            "amount": amount,
+            "justification": "Twitter API monitoring"
+        });
+        
+        self.ws_conn.send(Message::Text(request.to_string())).await?;
+        
+        // Wait for approval from Policy Engine
+        let response = self.ws_conn.next().await
+            .ok_or_else(|| anyhow!("Connection closed"))??;
+        
+        let approval: TokenApproval = serde_json::from_str(&response.to_string())?;
+        
+        if approval.granted {
+            self.token_balance.fetch_add(amount, Ordering::SeqCst);
+            Ok(())
+        } else {
+            anyhow::bail!("Token request denied: {}", approval.reason)
+        }
+    }
+    
+    /// Publish event to SACF v2 message bus
+    pub async fn publish_event(&self, event_type: &str, payload: serde_json::Value) -> Result<()> {
+        let event = json!({
+            "type": "event_publish",
+            "event_type": event_type,
+            "payload": payload,
+            "published_by": self.agent_id,
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        });
+        
+        self.ws_conn.send(Message::Text(event.to_string())).await?;
+        
+        // This is also logged in agent_events table by Governance Fabric
+        Ok(())
+    }
+    
+    /// Subscribe to event stream
+    pub async fn subscribe(&self, event_type: &str) -> Result<mpsc::Receiver<AgentEvent>> {
+        let (tx, rx) = mpsc::channel(100);
+        
+        let subscribe_msg = json!({
+            "type": "subscribe",
+            "event_type": event_type,
+            "subscriber_id": self.agent_id
+        });
+        
+        self.ws_conn.send(Message::Text(subscribe_msg.to_string())).await?;
+        
+        // Spawn listener task
+        tokio::spawn(self.clone().event_listener_loop(tx));
+        
+        Ok(rx)
+    }
+}
+
+8. Main Orchestrator
+rust// crates/spectrum-commercial/src/orchestrator.rs
+
+pub struct CommercialOrchestrator {
+    db: PgPool,
+    config: Config,
+}
+
+impl CommercialOrchestrator {
+    pub async fn start(db: PgPool, config: Config) -> Result<()> {
+        info!("Starting Spectrum Commercial Organism...");
+        
+        // Initialize SACF v2 connection
+        let sacf_client = SACFClient::connect(&config.sacf_endpoint).await?;
+        
+        // Register as a "commercial" namespace in the fabric
+        sacf_client.register_namespace("commercial", json!({
+            "description": "Autonomous revenue generation agents",
+            "capabilities": [
+                "lead_discovery",
+                "demo_execution",
+                "deployment_automation",
+                "retention_optimization"
+            ]
+        })).await?;
+        
+        // Spawn all agents
+        let hunter = HunterAgent::new(db.clone(), sacf_client.clone());
+        let qualifier = QualifierAgent::new(db.clone(), sacf_client.clone());
+        let demo = DemoAgent::new(db.clone(), sacf_client.clone()).await?;
+        let closer = CloserAgent::new(db.clone(), sacf_client.clone());
+        let provisioner = ProvisionerAgent::new(
+            db.clone(),
+            sacf_client.clone(),
+            config.docker_client.clone(),
+            config.cloudflare_client.clone()
+        );
+        let retention = RetentionAgent::new(db.clone(), sacf_client.clone());
+        
+        // Spawn all as background tasks
+        tokio::spawn(hunter.run());
+        tokio::spawn(qualifier.run());
+        tokio::spawn(demo.run());
+        tokio::spawn(closer.run());
+        tokio::spawn(provisioner.run());
+        tokio::spawn(retention.run());
+        
+        info!("All commercial agents operational. The organism is alive.");
+        
+        // Keep main thread alive
+        tokio::signal::ctrl_c().await?;
+        
+        Ok(())
+    }
+}
+
+9. Integration with Spectrum Server
+rust// crates/spectrum-server/src/main.rs
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
+    
+    // Load config
+    let config = Config::from_env()?;
+    
+    // Initialize Postgres
+    let db_pool = PgPoolOptions::new()
+        .max_connections(50)
+        .connect(&config.database_url)
+        .await?;
+    
+    // Run migrations
+    sqlx::migrate!("../spectrum-commercial/migrations")
+        .run(&db_pool)
+        .await?;
+    
+    // Start Universal Protocol Translator (Phase 1)
+    let translator = spectrum_translator::Translator::new(db_pool.clone());
+    tokio::spawn(translator.serve(config.translator_port));
+    
+    // Start Governance Fabric (Phase 2)
+    let governance = spectrum_governance::GovernanceFabric::new(db_pool.clone(), config.governance);
+    tokio::spawn(governance.serve(config.governance_port));
+    
+    // Start Commercial Organism (This file)
+    tokio::spawn(spectrum_commercial::CommercialOrchestrator::start(
+        db_pool.clone(),
+        config.commercial
+    ));
+    
+    info!("Spectrum Core fully operational");
+    info!("  - Universal Translator: port {}", config.translator_port);
+    info!("  - Governance Fabric: port {}", config.governance_port);
+    info!("  - Commercial Organism: ACTIVE");
+    
+    // Serve admin UI
+    let app = Router::new()
+        .route("/health", get(health_check))
+        .route("/admin/leads", get(list_leads))
+        .route("/admin/deployments", get(list_deployments));
+    
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", config.admin_port))
+        .await?;
+    
+    axum::serve(listener, app).await?;
+    
+    Ok(())
+}
+
+10. Docker Compose Integration
+yaml# docker-compose.yml (Updated)
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+  
+  spectrum-core:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres/spectrum
+      REDIS_URL: redis://redis:6379
+      
+      # Commercial Agent API Keys
+      TWITTER_BEARER_TOKEN: ${TWITTER_BEARER_TOKEN}
+      REDDIT_CLIENT_ID: ${REDDIT_CLIENT_ID}
+      REDDIT_CLIENT_SECRET: ${REDDIT_CLIENT_SECRET}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      DOCUSIGN_API_KEY: ${DOCUSIGN_API_KEY}
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN}
+      CALENDLY_API_KEY: ${CALENDLY_API_KEY}
+      
+      # Governance
+      SACF_PORT: 8080
+      GOVERNANCE_PORT: 8081
+      TRANSLATOR_PORT: 8082
+      ADMIN_PORT: 3000
+    ports:
+      - "8080:8080"  # SACF v2
+      - "8081:8081"  # Governance
+      - "8082:8082"  # Translator
+      - "3000:3000"  # Admin UI
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock  # For provisioning client containers
+    restart: always
+
+volumes:
+  postgres_data:
+
+11. The Revenue Flywheel in Action
+Day 1 Morning:
+
+Hunter discovers 12 high-signal leads across Twitter, Reddit, HN overnight
+Qualifier reaches out to 8 of them (4 were below threshold)
+3 book demos via Calendly for today
+
+Day 1 Afternoon:
+
+Demo Agent runs 2 demos completely autonomous:
+
+Demo 1: Professional services firm, $8M revenue → Closed positive ($35k Professional tier)
+Demo 2: E-commerce company, $3M revenue → Nurture (wants to discuss with CTO)
+
+
+Closer Agent generates contract for Demo 1, sends DocuSign + Stripe link
+
+Day 1 Evening:
+
+Contract signed, 50% deposit paid ($17.5k in Stripe)
+Provisioner Agent immediately kicks off Day 0 infrastructure setup
+Retention Agent identifies 2 expansion opportunities in existing clients ($10k potential)
+
+Week 1 Total:
+
+47 leads discovered
+15 demos booked
+6 demos completed
+3 closed ($105k in setup fees + $7.5k/mo recurring)
+2 client brains went live from previous week
+
+You touched: Nothing. You woke up, checked the dashboard, joined one demo for fun.
+
+12. The Moat
+This architecture creates multiple compounding moats:
+Technical Moat: The Commercial Organism proves that Spectrum can orchestrate complex, multi-agent workflows reliably. Every successful deployment is a reference implementation for enterprise buyers.
+Data Moat: Every lead discovery, every demo interaction, every objection handled feeds back into the training data. The agents get better at converting over time.
+Network Moat: Every deployed client brain creates stickiness. Their accumulated memory, workflow configurations, and integrations make switching painful.
+Sovereignty Moat: Clients own their data and infrastructure. This isn't SaaS lock-in—it's protocol lock-in. Once they build on Spectrum IR, replacing it requires rewriting everything.

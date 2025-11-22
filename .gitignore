@@ -95,6 +95,10 @@ credentials.json
 worker/
 wrangler.toml.backup
 
+# Claude Code context files (may contain sensitive paths/info)
+CLAUDE.md
+**/CLAUDE.md
+
 # Separate git repositories
 DevMCP/
 aijesusbro.com/
@@ -102,4 +106,8 @@ medtainer-dev/
 spectrum-production/
 rando-projects/
 chief-ai-implementation-github/
+enterprise-mcp-server/
+mcp-orchestrator/
+core-brain/
+revops-engine/
 

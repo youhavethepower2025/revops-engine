@@ -1,2 +1,0 @@
-"""Tool system for CursorMCP"""
-
